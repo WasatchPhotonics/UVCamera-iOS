@@ -10,5 +10,7 @@ an iPhone XS.
 
 # Version History
 
+- 2019-03-19 0.0.2
+    - able to screenshot previews from both cameras
 - 2019-03-19 0.0.1
     - stubbing views
