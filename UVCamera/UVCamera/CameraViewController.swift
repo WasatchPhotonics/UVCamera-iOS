@@ -10,7 +10,7 @@ import UIKit
 import AVFoundation
 
 /// @see https://www.youtube.com/watch?v=7TqXrMnfJy8&list=PLaXWdRaxFtVcIwNK3ylcG9K8P8xYNirLl&index=3
-class CameraViewController: UIViewController
+class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
 {
     var state : State?
     var cameraNum : Int = 0 // 1 = wide-angle = ƒ/1.8
@@ -22,7 +22,8 @@ class CameraViewController: UIViewController
     var currentCamera: AVCaptureDevice?
     var photoOutput: AVCapturePhotoOutput?
     var cameraPreviewLayer: AVCaptureVideoPreviewLayer?
-    
+    var image: UIImage?
+
     ////////////////////////////////////////////////////////////////////////////
     // ViewController delegate
     ////////////////////////////////////////////////////////////////////////////
@@ -58,15 +59,27 @@ class CameraViewController: UIViewController
             print("using narrow camera")
             currentCamera = cameraNarrow
         }
+        
+        // TODO: fail more gracefully on iPhones with one camera
+        if (currentCamera == nil)
+        {
+            print("ERROR: no camera found")
+            return
+        }
+        
+        print("currentCamera minAvailableVideoZoomFactor = \(currentCamera!.minAvailableVideoZoomFactor)")
+        print("currentCamera maxAvailableVideoZoomFactor = \(currentCamera!.maxAvailableVideoZoomFactor)")
 
         print("adding current camera as input to our captureSession")
         do
         {
             let captureDeviceInput = try AVCaptureDeviceInput(device: currentCamera!)
             captureSession.addInput(captureDeviceInput)
+            photoOutput = AVCapturePhotoOutput()
             photoOutput?.setPreparedPhotoSettingsArray(
                 [AVCapturePhotoSettings(format: [AVVideoCodecKey: AVVideoCodecType.jpeg])],
                 completionHandler: nil)
+            captureSession.addOutput(photoOutput!)
         }
         catch
         {
@@ -109,10 +122,6 @@ class CameraViewController: UIViewController
         }
     }
 
-    ////////////////////////////////////////////////////////////////////////////
-    // Methods
-    ////////////////////////////////////////////////////////////////////////////
-
     func findWideAngleCamera()
     {
         let deviceDiscoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: [AVCaptureDevice.DeviceType.builtInWideAngleCamera], mediaType: AVMediaType.video, position: AVCaptureDevice.Position.back)
@@ -131,7 +140,7 @@ class CameraViewController: UIViewController
             currentCamera = cameraWide
         }
     }
-
+    
     func findNarrowAngleCamera()
     {
         let deviceDiscoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: [AVCaptureDevice.DeviceType.builtInTelephotoCamera], mediaType: AVMediaType.video, position: AVCaptureDevice.Position.back)
@@ -149,5 +158,63 @@ class CameraViewController: UIViewController
         {
             currentCamera = cameraNarrow
         }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // AVCapturePhotoCaptureDelegate
+    ////////////////////////////////////////////////////////////////////////////
+
+    func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?)
+    {
+        if let imageData = photo.fileDataRepresentation()
+        {
+            print("Outputted image of \(imageData)")
+            image = UIImage(data: imageData)
+            
+            // https://stackoverflow.com/a/40858152
+            UIImageWriteToSavedPhotosAlbum(image!, self, #selector(image(_:didFinishSavingWithError:contextInfo:)), nil)
+        }
+    }
+
+    @objc func image(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeRawPointer)
+    {
+        if let error = error
+        {
+            // we got back an error!
+            showAlertWith(title: "Save error", message: error.localizedDescription)
+        }
+        else
+        {
+            showAlertWith(title: "Saved!", message: "Your image has been saved to your photos.")
+            if let st = state
+            {
+                if (currentCamera == cameraNarrow) {
+                    st.image24 = image
+                } else {
+                    st.image18 = image
+                }
+            }
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Callbacks
+    ////////////////////////////////////////////////////////////////////////////
+
+    @IBAction func cameraButton_TouchUpInside(_ sender: Any)
+    {
+        let settings = AVCapturePhotoSettings()
+        photoOutput?.capturePhoto(with: settings, delegate: self)
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Methods
+    ////////////////////////////////////////////////////////////////////////////
+    
+    func showAlertWith(title: String, message: String)
+    {
+        let ac = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        ac.addAction(UIAlertAction(title: "OK", style: .default))
+        present(ac, animated: true)
     }
 }

@@ -65,10 +65,32 @@
         <scene sceneID="bje-zX-x72">
             <objects>
                 <viewController title="Camera" id="FOj-Qu-blB" customClass="CameraViewController" customModule="UVCamera" customModuleProvider="target" sceneMemberID="viewController">
-                    <view key="view" contentMode="scaleToFill" id="dNn-yk-rCO">
+                    <view key="view" clipsSubviews="YES" contentMode="scaleToFill" id="dNn-yk-rCO">
                         <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
-                        <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                        <subviews>
+                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="oCA-ZD-YVo">
+                                <rect key="frame" x="157.5" y="547" width="60" height="60"/>
+                                <color key="backgroundColor" red="0.93725490199999995" green="0.93725490199999995" blue="0.95686274510000002" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" constant="60" id="5nk-Ak-Tbx"/>
+                                    <constraint firstAttribute="height" constant="60" id="ONA-wm-GqN"/>
+                                </constraints>
+                                <userDefinedRuntimeAttributes>
+                                    <userDefinedRuntimeAttribute type="number" keyPath="layer.cornerRadius">
+                                        <integer key="value" value="30"/>
+                                    </userDefinedRuntimeAttribute>
+                                </userDefinedRuntimeAttributes>
+                                <connections>
+                                    <action selector="cameraButton_TouchUpInside:" destination="FOj-Qu-blB" eventType="touchUpInside" id="KDz-u3-syu"/>
+                                </connections>
+                            </button>
+                        </subviews>
+                        <color key="backgroundColor" white="0.0" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                        <constraints>
+                            <constraint firstItem="oCA-ZD-YVo" firstAttribute="centerX" secondItem="dNn-yk-rCO" secondAttribute="centerX" id="6iW-fD-v6g"/>
+                            <constraint firstItem="6O1-Y0-dX4" firstAttribute="bottom" secondItem="oCA-ZD-YVo" secondAttribute="bottom" constant="60" id="hAz-fp-cGx"/>
+                        </constraints>
                         <viewLayoutGuide key="safeArea" id="6O1-Y0-dX4"/>
                     </view>
                 </viewController>
