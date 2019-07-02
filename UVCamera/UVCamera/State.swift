@@ -11,7 +11,7 @@ import UIKit
 
 class State
 {
-    var image18 : UIImage? = nil
-    var image24 : UIImage? = nil
+    var imageWide : UIImage? = nil
+    var imageNarrow : UIImage? = nil
     var imageProcessed : UIImage? = nil
 }

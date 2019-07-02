@@ -12,18 +12,21 @@ import AVFoundation
 /// @see https://www.youtube.com/watch?v=7TqXrMnfJy8&list=PLaXWdRaxFtVcIwNK3ylcG9K8P8xYNirLl&index=3
 class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
 {
-    var state : State?
-    var cameraNum : Int = 0 // 1 = wide-angle = ƒ/1.8
-                            // 2 = telephoto  = ƒ/2.4
+    @IBOutlet weak var imageViewProcessed: UIImageView!
     
-    var captureSession = AVCaptureSession()
+    var state : State?
+    
+    var captureSessionWide = AVCaptureSession()
+    var captureSessionNarrow = AVCaptureSession()
+
     var cameraWide: AVCaptureDevice?
     var cameraNarrow: AVCaptureDevice?
-    var currentCamera: AVCaptureDevice?
-    var photoOutput: AVCapturePhotoOutput?
+    
+    var photoOutputWide: AVCapturePhotoOutput?
+    var photoOutputNarrow: AVCapturePhotoOutput?
+    
     var cameraPreviewLayer: AVCaptureVideoPreviewLayer?
-    var image: UIImage?
-
+    
     ////////////////////////////////////////////////////////////////////////////
     // ViewController delegate
     ////////////////////////////////////////////////////////////////////////////
@@ -34,13 +37,13 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         
         print("loading CameraViewController")
 
-        print("setup AVCaptureSession")
-        captureSession.sessionPreset = AVCaptureSession.Preset.photo
+        print("setup AVCaptureSessions")
+        captureSessionNarrow.sessionPreset = AVCaptureSession.Preset.photo
+        captureSessionWide.sessionPreset = AVCaptureSession.Preset.photo
 
         print("finding cameras")
-        findWideAngleCamera()
-        findNarrowAngleCamera()
-        
+        cameraWide = findCamera(AVCaptureDevice.DeviceType.builtInWideAngleCamera)
+        cameraNarrow = findCamera(AVCaptureDevice.DeviceType.builtInTelephotoCamera)
     }
     
     override func viewWillAppear(_ animated: Bool)
@@ -48,38 +51,34 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         super.viewWillAppear(animated)
         
         print("CameraViewController will appear")
-        print("cameraNum = \(self.cameraNum)")
-        if (cameraNum == 1)
-        {
-            print("using wide camera")
-            currentCamera = cameraWide
-        }
-        else
-        {
-            print("using narrow camera")
-            currentCamera = cameraNarrow
-        }
         
-        // TODO: fail more gracefully on iPhones with one camera
-        if (currentCamera == nil)
+        print("adding NFOV camera as input to captureSessionNarrow")
+        do
         {
-            print("ERROR: no camera found")
+            let captureDeviceInput = try AVCaptureDeviceInput(device: cameraNarrow!)
+            captureSessionNarrow.addInput(captureDeviceInput)
+            photoOutputNarrow = AVCapturePhotoOutput()
+            photoOutputNarrow?.setPreparedPhotoSettingsArray(
+                [AVCapturePhotoSettings(format: [AVVideoCodecKey: AVVideoCodecType.jpeg])],
+                completionHandler: nil)
+            captureSessionNarrow.addOutput(photoOutputNarrow!)
+        }
+        catch
+        {
+            print(error)
             return
         }
         
-        print("currentCamera minAvailableVideoZoomFactor = \(currentCamera!.minAvailableVideoZoomFactor)")
-        print("currentCamera maxAvailableVideoZoomFactor = \(currentCamera!.maxAvailableVideoZoomFactor)")
-
-        print("adding current camera as input to our captureSession")
+        print("adding WFOV camera as input to our captureSessionWide")
         do
         {
-            let captureDeviceInput = try AVCaptureDeviceInput(device: currentCamera!)
-            captureSession.addInput(captureDeviceInput)
-            photoOutput = AVCapturePhotoOutput()
-            photoOutput?.setPreparedPhotoSettingsArray(
+            let captureDeviceInput = try AVCaptureDeviceInput(device: cameraWide!)
+            captureSessionWide.addInput(captureDeviceInput)
+            photoOutputWide = AVCapturePhotoOutput()
+            photoOutputWide?.setPreparedPhotoSettingsArray(
                 [AVCapturePhotoSettings(format: [AVVideoCodecKey: AVVideoCodecType.jpeg])],
                 completionHandler: nil)
-            captureSession.addOutput(photoOutput!)
+            captureSessionWide.addOutput(photoOutputWide!)
         }
         catch
         {
@@ -87,34 +86,76 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
             return
         }
 
-        // could possibly create both layers, and simply move current to the front
-        print("adding preview layer from current captureSession")
-        cameraPreviewLayer = AVCaptureVideoPreviewLayer(session: captureSession)
+        print("adding preview layer from current captureSessionNarrow")
+        cameraPreviewLayer = AVCaptureVideoPreviewLayer(session: captureSessionNarrow)
         cameraPreviewLayer?.videoGravity = AVLayerVideoGravity.resizeAspectFill
         cameraPreviewLayer?.connection?.videoOrientation = AVCaptureVideoOrientation.portrait
         cameraPreviewLayer?.frame = self.view.frame
+        
+        // insert new preview layer at back (behind button and thumbs)
         self.view.layer.insertSublayer(cameraPreviewLayer!, at: 0)
 
-        print("running captureSession")
-        captureSession.startRunning()
+        activateNarrow()
+    }
+    
+    func doingNarrow() -> Bool
+    {
+        return captureSessionNarrow.isRunning
+    }
+    
+    func activateWide()
+    {
+        if captureSessionNarrow.isRunning
+        {
+            captureSessionNarrow.stopRunning()
+        }
+        print("running captureSessionWide")
+        captureSessionWide.startRunning()
+    }
+    
+    func activateNarrow()
+    {
+        if captureSessionWide.isRunning
+        {
+            captureSessionWide.stopRunning()
+        }
+        print("running captureSessionNarrow")
+        captureSessionNarrow.startRunning()
     }
     
     override func viewWillDisappear(_ animated: Bool)
     {
         super.viewWillDisappear(animated)
         
-        // stop the captureSession
-        captureSession.stopRunning()
-        
+        // stop any running captureSessions
+        if self.doingNarrow()
+        {
+            captureSessionNarrow.stopRunning()
+        }
+        else
+        {
+            captureSessionWide.stopRunning()
+        }
+
         // remove the preview layer (will re-add for selected camera on next visit)
         cameraPreviewLayer?.removeFromSuperlayer()
         cameraPreviewLayer = nil
 
-        // remove the camera from our captureSession
+        // remove the cameras from our captureSessions
         do
         {
-            let captureDeviceInput = try AVCaptureDeviceInput(device: currentCamera!)
-            captureSession.removeInput(captureDeviceInput)
+            let captureDeviceInput = try AVCaptureDeviceInput(device: cameraNarrow!)
+            captureSessionNarrow.removeInput(captureDeviceInput)
+        }
+        catch
+        {
+            print(error)
+        }
+        
+        do
+        {
+            let captureDeviceInput = try AVCaptureDeviceInput(device: cameraWide!)
+            captureSessionWide.removeInput(captureDeviceInput)
         }
         catch
         {
@@ -122,59 +163,202 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         }
     }
 
-    func findWideAngleCamera()
+    func findCamera(_ deviceType: AVCaptureDevice.DeviceType) -> AVCaptureDevice?
     {
-        let deviceDiscoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: [AVCaptureDevice.DeviceType.builtInWideAngleCamera], mediaType: AVMediaType.video, position: AVCaptureDevice.Position.back)
-        let devices = deviceDiscoverySession.devices
-        for device in devices
+        let deviceDiscoverySession = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [deviceType],
+            mediaType: AVMediaType.video,
+            position: AVCaptureDevice.Position.back)
+        for device in deviceDiscoverySession.devices
         {
-            print("found wide-angle camera")
-            cameraWide = device
+            print("found \(deviceType)")
+            return device
         }
-        if cameraWide == nil
-        {
-            print("unable to find wide-angle camera")
-        }
-        else
-        {
-            currentCamera = cameraWide
-        }
+        print("unable to find \(deviceType)")
+        return nil
     }
     
-    func findNarrowAngleCamera()
-    {
-        let deviceDiscoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: [AVCaptureDevice.DeviceType.builtInTelephotoCamera], mediaType: AVMediaType.video, position: AVCaptureDevice.Position.back)
-        let devices = deviceDiscoverySession.devices
-        for device in devices
-        {
-            print("found narrow-angle camera")
-            cameraNarrow = device
-        }
-        if cameraNarrow == nil
-        {
-            print("unable to find narrow-angle camera")
-        }
-        else
-        {
-            currentCamera = cameraNarrow
-        }
-    }
-
     ////////////////////////////////////////////////////////////////////////////
     // AVCapturePhotoCaptureDelegate
     ////////////////////////////////////////////////////////////////////////////
+    
+    func save(_ image: UIImage)
+    {
+        // https://stackoverflow.com/a/40858152
+        UIImageWriteToSavedPhotosAlbum(image, self, #selector(image(_:didFinishSavingWithError:contextInfo:)), nil)
+    }
 
     func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?)
     {
         if let imageData = photo.fileDataRepresentation()
         {
             print("Outputted image of \(imageData)")
-            image = UIImage(data: imageData)
-            
-            // https://stackoverflow.com/a/40858152
-            UIImageWriteToSavedPhotosAlbum(image!, self, #selector(image(_:didFinishSavingWithError:contextInfo:)), nil)
+            if let image = UIImage(data: imageData)
+            {
+                // Go ahead and save the photo to disk, although technically we
+                // probably don't need this feature.
+                if (self.doingNarrow())
+                {
+                    // imageViewThumb24.image = image
+                    state!.imageNarrow = image
+                    
+                    // if we just received and processed a NFOV photo, immediately
+                    // take a WFOV photo (which will trigger multi-camera processing)
+                    activateWide()
+                    takePhoto()
+                }
+                else
+                {
+                    // imageViewThumb18.image = image
+                    state!.imageWide = image
+
+                    // if we just took a WFOV photo, perform multi-camera processing,
+                    // then reset back to NFOV preparatory to the next button-press
+                    performProcessing()
+                    activateNarrow()
+                }
+            }
         }
     }
+    
+    func performProcessing()
+    {
+        let hr = "\n-----------------------------\n"
+        
+        print("processing")
+        if let W = state!.imageWide
+        {
+            if let N = state!.imageNarrow
+            {
+                // Assuming LPF is on W, where:
+                //   W = WFOV
+                //   N = NFOV
+                //   U = UV
+                // U = N - W
+                // T = tint(U)
+                // display(T atop N)
+
+                let tintColor = CIColor(red: 1.0, green: 0.0, blue: 0.0)
+                
+                // print("\(hr)saving raw WFOV and NFOV")
+                // save(W)
+                // save(N)
+                imageViewProcessed.image = N
+
+                // This seems non-sensical, but it does something.  By default,
+                // the cropped WFOV was coming out rotated 90º CCW (top = west).
+                // When I explicitly rotated it 90º CW here, it came out (top =
+                // east).  So now I explicitly rotate it 0º, and the cropped
+                // version retains (top = north).
+                print("\(hr)rotating WFOV")
+                let Wr = W.rotate(radians: 0)! // .pi/2)!
+                save(Wr) // good
+                // let Wr = W
+                
+                // let Nr = N.rotate(radians: .pi/2, horizFlip: true)!
+                // print("saving sized/rotated WFOV and NFOV")
+                // save(Nr)
+                // imageViewProcessed.image = Nr
+                let Nr = N
+
+                print("\(hr)cropping WFOV")
+                if let Wc = Wr.crop(percent: 0.5)
+                {
+                    save(Wc) // good
+
+                    print("\(hr)resizing NFOV")
+                    if let Nc = Nr.resize(0.5)
+                    {
+                        imageViewProcessed.image = Nc
+                        save(Nc) // good
+
+                        print("\(hr)converting WFOV to normalized grayscale")
+                        if let Wn = Wc.normalizeGrayscale()
+                        {
+                            print("\(hr)saving normalized grayscale WFOV")
+                            save(Wn)  // BLOWS UP
+                            
+                            if true
+                            {
+                                print("\(hr)converting NFOV to normalized grayscale")
+                                if let Nn = Nc.normalizeGrayscale()
+                                {
+                                    print("\(hr)saving normalized grayscale NFOV")
+                                    save(Nn)
+                                    imageViewProcessed.image = Nn
+
+                                    if true
+                                    {
+                                        print("\(hr)generating UV")
+                                        if let UV = Nn.diffGrayscale(Wn)
+                                        {
+                                            save(UV)
+                                            imageViewProcessed.image = UV
+
+                                            if true
+                                            {
+                                                print("\(hr)tinting UV")
+                                                if let T = UV.tint(tintColor)
+                                                {
+                                                    save(T)
+                                                    imageViewProcessed.image = T
+
+                                                    print("\(hr)blending T atop N")
+                                                    if let blended = Nn.blend(T)
+                                                    {
+                                                        imageViewProcessed.image = blended
+                                                        save(blended)
+                                                    }
+                                                    else
+                                                    {
+                                                        print("final blend failed")
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    print("tint failed")
+                                                }
+                                            }
+                                        }
+                                        else
+                                        {
+                                            print("Nn - Wn diff failed")
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    print("failed to convert NFOV to grayscale")
+                                }
+                            }
+                        }
+                        else
+                        {
+                            print("failed to convert WFOV to grayscale")
+                        }
+                    }
+                    else
+                    {
+                        print("failed to resize NFOV")
+                    }
+                }
+                else
+                {
+                    print("failed to crop WFOV")
+                }
+            }
+            else
+            {
+                print("processing: no NFOV")
+            }
+        }
+        else
+        {
+            print("processing: no WFOV")
+        }
+    }
+
+
 
     @objc func image(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeRawPointer)
     {
@@ -185,15 +369,9 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         }
         else
         {
-            showAlertWith(title: "Saved!", message: "Your image has been saved to your photos.")
-            if let st = state
-            {
-                if (currentCamera == cameraNarrow) {
-                    st.image24 = image
-                } else {
-                    st.image18 = image
-                }
-            }
+            // This is annoying...don't do it
+            // showAlertWith(title: "Saved!", message: "Your image has been saved to your photos.")
+            print("Image saved to album")
         }
     }
 
@@ -203,6 +381,20 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
 
     @IBAction func cameraButton_TouchUpInside(_ sender: Any)
     {
+        takePhoto()
+    }
+    
+    func takePhoto()
+    {
+        var photoOutput : AVCapturePhotoOutput? = nil
+        if doingNarrow()
+        {
+            photoOutput = photoOutputNarrow
+        }
+        else
+        {
+            photoOutput = photoOutputWide
+        }
         let settings = AVCapturePhotoSettings()
         photoOutput?.capturePhoto(with: settings, delegate: self)
     }
