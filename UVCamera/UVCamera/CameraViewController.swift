@@ -16,6 +16,9 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
     
     var state : State?
     
+    let saveAll = true
+    var timeStart = DispatchTime.now()
+
     var captureSessionWide = AVCaptureSession()
     var captureSessionNarrow = AVCaptureSession()
 
@@ -182,8 +185,15 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
     // AVCapturePhotoCaptureDelegate
     ////////////////////////////////////////////////////////////////////////////
     
-    func save(_ image: UIImage)
+    func save(_ image: UIImage, _ label: String, force: Bool=false)
     {
+        if !(saveAll || force)
+        {
+            return
+        }
+                
+        print("Saving \(label)...")
+        
         // https://stackoverflow.com/a/40858152
         UIImageWriteToSavedPhotosAlbum(image, self, #selector(image(_:didFinishSavingWithError:contextInfo:)), nil)
     }
@@ -195,26 +205,33 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
             print("Outputted image of \(imageData)")
             if let image = UIImage(data: imageData)
             {
-                // Go ahead and save the photo to disk, although technically we
-                // probably don't need this feature.
+                // did we just finish taking the NFOV (first) or WFOV (second) photo?
                 if (self.doingNarrow())
                 {
-                    // imageViewThumb24.image = image
+                    // just finished taking the first (NFOV) image, upon click
+                    // of the button
+                    profile("take NFOV photo")
+                    
+                    // keep a copy for processing
                     state!.imageNarrow = image
                     
-                    // if we just received and processed a NFOV photo, immediately
-                    // take a WFOV photo (which will trigger multi-camera processing)
+                    // take the WFOV photo (which receipt will trigger multi-camera processing)
+                    resetClock()
                     activateWide()
                     takePhoto()
+                    profile("take WFOV photo")
                 }
                 else
                 {
-                    // imageViewThumb18.image = image
+                    // just received the WFOV (second) image
+                    
+                    // store a copy
                     state!.imageWide = image
 
-                    // if we just took a WFOV photo, perform multi-camera processing,
-                    // then reset back to NFOV preparatory to the next button-press
+                    // perform multi-camera processing
                     performProcessing()
+
+                    // then reset back to NFOV preparatory to the next button-press
                     activateNarrow()
                 }
             }
@@ -223,7 +240,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
     
     func performProcessing()
     {
-        let hr = "\n-----------------------------\n"
+        let hr = "\n"
         
         print("processing")
         if let W = state!.imageWide
@@ -240,9 +257,6 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
 
                 let tintColor = CIColor(red: 1.0, green: 0.0, blue: 0.0)
                 
-                // print("\(hr)saving raw WFOV and NFOV")
-                // save(W)
-                // save(N)
                 imageViewProcessed.image = N
 
                 // This seems non-sensical, but it does something.  By default,
@@ -250,86 +264,91 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
                 // When I explicitly rotated it 90º CW here, it came out (top =
                 // east).  So now I explicitly rotate it 0º, and the cropped
                 // version retains (top = north).
+                resetClock()
                 print("\(hr)rotating WFOV")
-                let Wr = W.rotate(radians: 0)! // .pi/2)!
-                save(Wr) // good
-                // let Wr = W
+                let Wr = W.rotate(radians: 0)!
+                save(Wr, "rotated WFOV")
+                profile("rotate WFOV")
                 
-                // let Nr = N.rotate(radians: .pi/2, horizFlip: true)!
-                // print("saving sized/rotated WFOV and NFOV")
-                // save(Nr)
-                // imageViewProcessed.image = Nr
+                // no need to rotate NFOV?
                 let Nr = N
 
                 print("\(hr)cropping WFOV")
                 if let Wc = Wr.crop(percent: 0.5)
                 {
-                    save(Wc) // good
+                    imageViewProcessed.image = Wc
+                    save(Wc, "cropped WFOV")
 
+                    resetClock()
                     print("\(hr)resizing NFOV")
                     if let Nc = Nr.resize(0.5)
                     {
                         imageViewProcessed.image = Nc
-                        save(Nc) // good
-
-                        print("\(hr)converting WFOV to normalized grayscale")
-                        if let Wn = Wc.normalizeGrayscale()
+                        save(Nc, "resized NFOV")
+                        profile("resize NFOV")
+                        
+                        resetClock()
+                        print("\(hr)converting WFOV to mono")
+                        if let Wn = Wc.mono()
                         {
-                            print("\(hr)saving normalized grayscale WFOV")
-                            save(Wn)  // BLOWS UP
+                            print("\(hr)saving mono WFOV")
+                            save(Wn, "grayscale WFOV")
+                            profile("grayscale WFOV")
                             
-                            if true
+                            resetClock()
+                            print("\(hr)converting NFOV to mono")
+                            if let Nn = Nc.mono()
                             {
-                                print("\(hr)converting NFOV to normalized grayscale")
-                                if let Nn = Nc.normalizeGrayscale()
+                                print("\(hr)saving mono NFOV")
+                                save(Nn, "grayscale NFOV")
+                                imageViewProcessed.image = Nn
+                                profile("grayscale NFOV")
+
+                                resetClock()
+                                print("\(hr)generating UV")
+                                if let UV = Nn.diff(Wn)
                                 {
-                                    print("\(hr)saving normalized grayscale NFOV")
-                                    save(Nn)
-                                    imageViewProcessed.image = Nn
+                                    save(UV, "UV (NFOV - WFOV)")
+                                    profile("generate UV")
+                                    imageViewProcessed.image = UV
 
-                                    if true
+                                    resetClock()
+                                    print("\(hr)tinting UV")
+                                    if let T = UV.tint(tintColor)
                                     {
-                                        print("\(hr)generating UV")
-                                        if let UV = Nn.diffGrayscale(Wn)
+                                        save(T, "tinted UV")
+                                        imageViewProcessed.image = T
+                                        profile("tint UV")
+
+                                        resetClock()
+                                        print("\(hr)blending T atop N")
+                                        if let blended = Nn.blend(T)
                                         {
-                                            save(UV)
-                                            imageViewProcessed.image = UV
-
-                                            if true
-                                            {
-                                                print("\(hr)tinting UV")
-                                                if let T = UV.tint(tintColor)
-                                                {
-                                                    save(T)
-                                                    imageViewProcessed.image = T
-
-                                                    print("\(hr)blending T atop N")
-                                                    if let blended = Nn.blend(T)
-                                                    {
-                                                        imageViewProcessed.image = blended
-                                                        save(blended)
-                                                    }
-                                                    else
-                                                    {
-                                                        print("final blend failed")
-                                                    }
-                                                }
-                                                else
-                                                {
-                                                    print("tint failed")
-                                                }
-                                            }
+                                            profile("blended UV")
+                                            
+                                            resetClock()
+                                            imageViewProcessed.image = blended
+                                            save(blended, "blended VIS + UV", force: true)
+                                            profile("save final image")
                                         }
                                         else
                                         {
-                                            print("Nn - Wn diff failed")
+                                            print("final blend failed")
                                         }
+                                    }
+                                    else
+                                    {
+                                        print("tint failed")
                                     }
                                 }
                                 else
                                 {
-                                    print("failed to convert NFOV to grayscale")
+                                    print("Nn - Wn diff failed")
                                 }
+                            }
+                            else
+                            {
+                                print("failed to convert NFOV to grayscale")
                             }
                         }
                         else
@@ -357,8 +376,19 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
             print("processing: no WFOV")
         }
     }
-
-
+    
+    func resetClock()
+    {
+        timeStart = DispatchTime.now()
+    }
+    
+    func profile(_ label: String)
+    {
+        let timeEnd = DispatchTime.now()
+        let elapsedSec = Double(timeEnd.uptimeNanoseconds - timeStart.uptimeNanoseconds) / 1_000_000_000
+        print(String(format: ">>> Profile: %-30@ : %.2f sec", label, elapsedSec))
+        resetClock()
+    }
 
     @objc func image(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeRawPointer)
     {
@@ -381,6 +411,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
 
     @IBAction func cameraButton_TouchUpInside(_ sender: Any)
     {
+        resetClock()
         takePhoto()
     }
     

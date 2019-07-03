@@ -11,6 +11,8 @@ an iPhone XS.
 
 # Version History
 
+- 2019-07-03 0.0.5
+    - 3.5x speedup (removed manual pixel math)
 - 2019-07-02 0.0.4
     - basic image-processing in place
 - 2019-06-11 0.0.3
