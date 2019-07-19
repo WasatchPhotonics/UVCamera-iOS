@@ -32,5 +32,11 @@ class ViewController: UIViewController {
             vc.state = state
         }
     }
+
+    @IBAction func saveComponentsCallback(_ sender: Any) {
+        
+        let flag = sender as! UISwitch
+        state?.saveComponents = flag.isOn
+    }
 }
 

@@ -14,4 +14,5 @@ class State
     var imageWide : UIImage? = nil
     var imageNarrow : UIImage? = nil
     var imageProcessed : UIImage? = nil
+    var saveComponents = false
 }
