@@ -11,11 +11,14 @@ an iPhone XS.
 
 # Version History
 
+- 2019-07-22 1.2.2
+    - added Launch Screen, online help
+    - submitted for TestFlight
 - 2019-07-19 1.1.3
     - resolved most constraint warnings
     - fixed screens for 6.5", 5.5"
     - better handling of non-dual-camera iPhones
-    - first App Store release
+    - first App Store submission [update: rejected]
 - 2019-07-03 0.0.5
     - 3.5x speedup (removed manual pixel math)
 - 2019-07-02 0.0.4

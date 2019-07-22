@@ -11,7 +11,7 @@ import UIKit
 class ViewController: UIViewController {
 
     var state : State?
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -23,6 +23,14 @@ class ViewController: UIViewController {
         setenv("CGBITMAP_CONTEXT_LOG_ERRORS", "1", 1)
     }
 
+    @IBAction func displayHelp(_ sender: Any)
+    {
+        if let url = URL(string: "https://mco.wasatchphotonics.com/uv/")
+        {
+            UIApplication.shared.open(url, options: [:], completionHandler: nil)
+        }
+    }
+    
     override func prepare(for segue: UIStoryboardSegue, sender: Any?)
     {
         print("preparing for transition")

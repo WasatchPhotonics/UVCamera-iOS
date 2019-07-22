@@ -19,7 +19,7 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="1000" verticalHuggingPriority="1000" insetsLayoutMarginsFromSafeArea="NO" image="Background" adjustsImageSizeForAccessibilityContentSizeCategory="YES" translatesAutoresizingMaskIntoConstraints="NO" id="ayA-NR-afS">
-                                <rect key="frame" x="0.0" y="0.0" width="375" height="812"/>
+                                <rect key="frame" x="0.0" y="88" width="375" height="724"/>
                                 <accessibility key="accessibilityConfiguration">
                                     <accessibilityTraits key="traits" image="YES" notEnabled="YES"/>
                                 </accessibility>
@@ -56,11 +56,19 @@
                                     <action selector="saveComponentsCallback:" destination="BYZ-38-t0r" eventType="valueChanged" id="D3V-yZ-hlN"/>
                                 </connections>
                             </switch>
+                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="ojH-ij-bgg">
+                                <rect key="frame" x="171.66666666666666" y="728" width="32" height="30"/>
+                                <state key="normal" title="Help"/>
+                                <connections>
+                                    <action selector="displayHelp:" destination="BYZ-38-t0r" eventType="touchUpInside" id="0jE-nJ-HaO"/>
+                                </connections>
+                            </button>
                         </subviews>
                         <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <constraints>
                             <constraint firstItem="ayA-NR-afS" firstAttribute="leading" secondItem="qkw-hE-Vli" secondAttribute="leading" id="0YM-jl-ww3" userLabel="Background.leading = Safe Area.leading"/>
-                            <constraint firstItem="ayA-NR-afS" firstAttribute="top" secondItem="8bC-Xf-vdC" secondAttribute="top" id="1VC-LC-2xc"/>
+                            <constraint firstItem="ayA-NR-afS" firstAttribute="top" secondItem="qkw-hE-Vli" secondAttribute="top" id="1VC-LC-2xc"/>
+                            <constraint firstItem="ojH-ij-bgg" firstAttribute="top" secondItem="dve-sc-Tuk" secondAttribute="bottom" constant="25" id="3Wq-Ei-qiI"/>
                             <constraint firstItem="3eh-AL-lqz" firstAttribute="centerX" secondItem="gt6-Qp-IOP" secondAttribute="centerX" id="4Ah-qc-U2i" userLabel="Logo.centerX = centerX"/>
                             <constraint firstItem="qkw-hE-Vli" firstAttribute="trailing" secondItem="ayA-NR-afS" secondAttribute="trailing" id="6Zw-xY-bSM" userLabel="Background.trailing = Safe Area.trailing"/>
                             <constraint firstItem="3eh-AL-lqz" firstAttribute="top" secondItem="qkw-hE-Vli" secondAttribute="top" constant="50" id="DFa-Qf-Ij8" userLabel="Logo.top = top + 50"/>
@@ -68,6 +76,7 @@
                             <constraint firstItem="gt6-Qp-IOP" firstAttribute="centerY" secondItem="8bC-Xf-vdC" secondAttribute="centerY" id="Otk-56-MG5"/>
                             <constraint firstItem="dve-sc-Tuk" firstAttribute="centerX" secondItem="qkw-hE-Vli" secondAttribute="centerX" id="U0E-zl-7bB"/>
                             <constraint firstAttribute="bottom" secondItem="ayA-NR-afS" secondAttribute="bottom" id="ZcK-0o-iMa"/>
+                            <constraint firstItem="ojH-ij-bgg" firstAttribute="centerX" secondItem="8bC-Xf-vdC" secondAttribute="centerX" id="hCH-oD-ypM"/>
                             <constraint firstItem="dve-sc-Tuk" firstAttribute="top" secondItem="smJ-vR-Axt" secondAttribute="bottom" constant="10" id="lzv-eD-kl6"/>
                             <constraint firstItem="smJ-vR-Axt" firstAttribute="centerX" secondItem="dve-sc-Tuk" secondAttribute="centerX" id="miO-Me-HeM"/>
                             <constraint firstItem="qkw-hE-Vli" firstAttribute="bottom" secondItem="dve-sc-Tuk" secondAttribute="bottom" constant="75" id="pkX-bT-3EW" userLabel="bottom = Save image components.bottom + 75"/>
