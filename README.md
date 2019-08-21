@@ -11,6 +11,9 @@ an iPhone XS.
 
 # Version History
 
+- 2019-08-21 1.2.3
+    - moved UV filter from WFOV to NFOV
+    - added UIImage.invert()
 - 2019-07-22 1.2.2
     - added Launch Screen, online help
     - submitted for TestFlight

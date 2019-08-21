@@ -396,13 +396,13 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         {
             if let N = state!.imageNarrow
             {
-                // Assuming LPF is on W, where:
+                // Assuming LPF is on N, where:
                 //   W = WFOV
                 //   N = NFOV
                 //   U = UV
-                // U = N - W
+                // U = W - N
                 // T = tint(U)
-                // display(T atop N)
+                // display(T atop W)
                 
                 let tintColor = CIColor(red: 1.0, green: 0.0, blue: 0.0)
                 
@@ -455,39 +455,52 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
                                 
                                 resetClock()
                                 print("\(hr)generating UV")
-                                if let UV = Nn.diff(Wn)
+                                if let UV = Wn.diff(Nn)
                                 {
-                                    save(UV, "UV (NFOV - WFOV)")
+                                    save(UV, "UV (WFOV - NFOV)")
                                     profile("generate UV")
                                     imageViewProcessed.image = UV
                                     
                                     resetClock()
-                                    print("\(hr)tinting UV")
-                                    if let T = UV.tint(tintColor)
+                                    print("\(hr)inverting UV")
+                                    if let UVi = UV.invert()
                                     {
-                                        save(T, "tinted UV")
-                                        imageViewProcessed.image = T
-                                        profile("tint UV")
+                                        save(UVi, "inverted UV")
+                                        profile("invert UV")
+                                        imageViewProcessed.image = UVi
                                         
                                         resetClock()
-                                        print("\(hr)blending T atop N")
-                                        if let blended = Nn.blend(T)
+                                        print("\(hr)tinting UV")
+                                        if let T = UVi.tint(tintColor)
                                         {
-                                            profile("blended UV")
+                                            save(T, "tinted UV")
+                                            imageViewProcessed.image = T
+                                            profile("tint UV")
                                             
                                             resetClock()
-                                            imageViewProcessed.image = blended
-                                            save(blended, "blended VIS + UV", force: true)
-                                            profile("save final image")
+                                            print("\(hr)blending T atop W")
+                                            if let blended = Wn.blend(T)
+                                            {
+                                                profile("blended UV")
+                                                
+                                                resetClock()
+                                                imageViewProcessed.image = blended
+                                                save(blended, "blended VIS + UV", force: true)
+                                                profile("save final image")
+                                            }
+                                            else
+                                            {
+                                                print("final blend failed")
+                                            }
                                         }
                                         else
                                         {
-                                            print("final blend failed")
+                                            print("tint failed")
                                         }
                                     }
                                     else
                                     {
-                                        print("tint failed")
+                                        print("failed to invert UV")
                                     }
                                 }
                                 else
