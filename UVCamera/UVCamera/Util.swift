@@ -8,9 +8,105 @@
 
 import Foundation
 import UIKit
+import Accelerate
+
+// https://spin.atomicobject.com/2016/10/20/ios-image-filters-in-swift/
+class BlueFilter: CIFilter // was CustomFilter
+{
+    @objc dynamic var inputImage: CIImage?
+    
+    override public var outputImage: CIImage! {
+        get {
+            if let inputImage = self.inputImage {
+                let args = [inputImage as AnyObject]
+                return createCustomKernel().apply(extent: inputImage.extent, arguments: args)
+            } else {
+                return nil
+            }
+        }
+    }
+    
+    func createCustomKernel() -> CIColorKernel {
+        let _ = "kernel vec4 chromaKey( __sample s) { \n return vec4(s.r, 0.0, 0.0, s.a); \n }"
+        let kernelString =
+            "kernel vec4 chromaKey( __sample s) { \n" +
+                "  vec4 newPixel = s.rgba;" +
+                "  newPixel[0] = 0.0;" +
+                "  newPixel[1] = 0.0;" +
+                "  return newPixel;\n" +
+        "}"
+        return CIColorKernel(source: kernelString)!
+    }
+}
 
 extension UIImage
 {
+    func justBlue() -> UIImage?
+    {
+        guard let cgImage = self.cgImage else { return nil }
+        let inputCIImage = CoreImage.CIImage(cgImage: cgImage)
+        
+        let filter = BlueFilter()
+        filter.setValue(inputCIImage, forKey: kCIInputImageKey)
+        
+        // Get the filtered output image and return it
+        let outputImage = filter.outputImage!
+
+        let context = CIContext()
+        if let cgimg = context.createCGImage(outputImage, from: outputImage.extent)
+        {
+            return UIImage(cgImage: cgimg)
+        }
+        return nil
+    }
+    
+    // https://stackoverflow.com/a/55434232/11615696
+    func normalize3() -> UIImage?
+    {
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        
+        guard let cgImage = cgImage else { return nil }
+        
+        var format = vImage_CGImageFormat(bitsPerComponent: UInt32(cgImage.bitsPerComponent),
+                                          bitsPerPixel: UInt32(cgImage.bitsPerPixel),
+                                          colorSpace: Unmanaged.passRetained(colorSpace),
+                                          bitmapInfo: cgImage.bitmapInfo,
+                                          version: 0,
+                                          decode: nil,
+                                          renderingIntent: cgImage.renderingIntent)
+        
+        var source = vImage_Buffer()
+        var result = vImageBuffer_InitWithCGImage(
+            &source,
+            &format,
+            nil,
+            cgImage,
+            vImage_Flags(kvImageNoFlags))
+        
+        guard result == kvImageNoError else { return nil }
+        
+        defer { free(source.data) }
+        
+        var destination = vImage_Buffer()
+        result = vImageBuffer_Init(
+            &destination,
+            vImagePixelCount(cgImage.height),
+            vImagePixelCount(cgImage.width),
+            32,
+            vImage_Flags(kvImageNoFlags))
+        
+        guard result == kvImageNoError else { return nil }
+        
+        result = vImageContrastStretch_ARGB8888(&source, &destination, vImage_Flags(kvImageNoFlags))
+        guard result == kvImageNoError else { return nil }
+        
+        defer { free(destination.data) }
+        
+        return vImageCreateCGImageFromBuffer(&destination, &format, nil, nil, vImage_Flags(kvImageNoFlags), nil).map {
+            UIImage(cgImage: $0.takeRetainedValue(), scale: scale, orientation: imageOrientation)
+        }
+    }
+    
     public func adjustContrast(_ factor: Double) -> UIImage?
     {
         guard let cgImage = self.cgImage else { return nil }

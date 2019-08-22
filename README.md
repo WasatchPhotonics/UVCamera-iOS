@@ -15,10 +15,14 @@ When an Android version floats up the priority stack, have a look at this:
 
 # Version History
 
+- 2019-08-22 1.3.0
+    - added normalize3()
+    - added BlueFilter
+    - successful testing with SPF-100 samples
 - 2019-08-22 1.2.4
     - moved default preview session from NFOV to WFOV
     - added adjustContrast()
-    - playing with non-subtractive (filtered) UV acquisition
+    - migrating to non-subtractive (filtered) UV acquisition
 - 2019-08-21 1.2.3
     - moved UV filter from WFOV to NFOV
     - added UIImage.invert()

@@ -430,8 +430,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
                 save(Wr, "rotated WFOV")
                 profile("rotate WFOV")
                 
-                // no need to rotate NFOV?
-                let Nr = N
+                // no need to rotate NFOV (don't ask me why)
                 
                 print("\(hr)cropping WFOV")
                 if let Wc = Wr.crop(percent: 0.5)
@@ -441,92 +440,106 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
                     resetClock()
 
                     print("\(hr)resizing NFOV")
-                    if let Nc = Nr.resize(0.5)
+                    if let Nc = N.resize(0.5)
                     {
                         imageViewProcessed.image = Nc
                         save(Nc, "resized NFOV")
                         profile("resize NFOV")
                         resetClock()
 
-                        print("\(hr)converting WFOV to mono")
-                        if let Wn = Wc.mono()
+                        print("\(hr)stripping NFOV red and green channels")
+                        if let Nb = Nc.justBlue()
                         {
-                            print("\(hr)saving mono WFOV")
-                            save(Wn, "grayscale WFOV")
-                            profile("grayscale WFOV")
+                            imageViewProcessed.image = Nb
+                            save(Nb, "blue NFOV")
+                            profile("blue NFOV")
                             resetClock()
-
-                            print("\(hr)converting NFOV to mono")
-                            if let Nn = Nc.mono()
+                            
+                            print("\(hr)converting WFOV to mono")
+                            if let Wn = Wc.mono()
                             {
-                                print("\(hr)saving mono NFOV")
-                                save(Nn, "grayscale NFOV")
-                                imageViewProcessed.image = Nn
-                                profile("grayscale NFOV")
+                                print("\(hr)saving mono WFOV")
+                                save(Wn, "grayscale WFOV")
+                                profile("grayscale WFOV")
                                 resetClock()
-
-                                print("\(hr)generating UV")
-                                if let UV = Nn.adjustContrast(2.0)
+                                
+                                print("\(hr)converting NFOV to mono")
+                                if let Nn = Nb.mono()
                                 {
-                                    save(UV, "UV (NFOV high-contrast)")
-                                    profile("generate UV")
-                                    imageViewProcessed.image = UV
+                                    print("\(hr)saving mono NFOV")
+                                    save(Nn, "grayscale NFOV")
+                                    imageViewProcessed.image = Nn
+                                    profile("grayscale NFOV")
                                     resetClock()
-
-                                    // print("\(hr)inverting UV")
-                                    if true // let UVi = UV.invert()
+                                    
+                                    print("\(hr)generating UV")
+                                    if let UV = Nn.normalize3()
                                     {
-                                        // save(UVi, "inverted UV")
-                                        // profile("invert UV")
-                                        // imageViewProcessed.image = UVi
-                                        // resetClock()
+                                        save(UV, "UV (NFOV normalized)")
+                                        profile("generate UV")
+                                        imageViewProcessed.image = UV
+                                        resetClock()
 
-                                        print("\(hr)tinting UV")
-                                        if let T = UV.tint(tintColor, 2.0) // was UVi
+                                        print("\(hr)cranking UV contrast")
+                                        if let UVc = UV.adjustContrast(1.5)
                                         {
-                                            save(T, "tinted UV")
-                                            imageViewProcessed.image = T
-                                            profile("tint UV")
+                                            save(UVc, "high-contrast UV")
+                                            profile("high-contrast UV")
+                                            imageViewProcessed.image = UVc
                                             resetClock()
-
-                                            print("\(hr)blending T atop W")
-                                            if let blended = Wn.blend(T)
+                                            
+                                            print("\(hr)tinting UV")
+                                            if let T = UVc.tint(tintColor, 2.0)
                                             {
-                                                profile("blended UV")
+                                                save(T, "tinted UV")
+                                                imageViewProcessed.image = T
+                                                profile("tint UV")
                                                 resetClock()
-
-                                                imageViewProcessed.image = blended
-                                                save(blended, "blended VIS + UV", force: true)
-                                                profile("save final image")
+                                                
+                                                print("\(hr)blending T atop W")
+                                                if let blended = Wn.blend(T)
+                                                {
+                                                    profile("blended UV")
+                                                    resetClock()
+                                                    
+                                                    imageViewProcessed.image = blended
+                                                    save(blended, "blended VIS + UV", force: true)
+                                                    profile("save final image")
+                                                }
+                                                else
+                                                {
+                                                    print("final blend failed")
+                                                }
                                             }
                                             else
                                             {
-                                                print("final blend failed")
+                                                print("tint failed")
                                             }
                                         }
                                         else
                                         {
-                                            print("tint failed")
+                                            print("failed to crank UV contrast")
                                         }
                                     }
                                     else
                                     {
-                                        print("failed to invert UV")
+                                        print("Nn - Wn diff failed")
                                     }
                                 }
                                 else
                                 {
-                                    print("Nn - Wn diff failed")
+                                    print("failed to convert NFOV to grayscale")
                                 }
                             }
                             else
                             {
-                                print("failed to convert NFOV to grayscale")
+                                print("failed to convert WFOV to grayscale")
                             }
+
                         }
                         else
                         {
-                            print("failed to convert WFOV to grayscale")
+                            print("failed to blue NFOV")
                         }
                     }
                     else
