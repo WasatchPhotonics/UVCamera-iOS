@@ -11,6 +11,17 @@ import UIKit
 
 extension UIImage
 {
+    public func adjustContrast(_ factor: Double) -> UIImage?
+    {
+        guard let cgImage = self.cgImage else { return nil }
+        let ciImage = CoreImage.CIImage(cgImage: cgImage)
+        let parameters = [ "inputContrast": NSNumber(value: 2) ]
+        let outputImage = ciImage.applyingFilter("CIColorControls", parameters: parameters)
+        let context = CIContext(options: nil)
+        let img = context.createCGImage(outputImage, from: outputImage.extent)!
+        return UIImage(cgImage: img)
+    }
+    
     public func invert() -> UIImage?
     {
         guard let cgImage = self.cgImage else { return nil }

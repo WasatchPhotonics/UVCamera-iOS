@@ -33,6 +33,8 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
     var cameraPreviewLayer: AVCaptureVideoPreviewLayer?
     var previewFullScreen = true
     
+    var useUVCamera = true
+    
     ////////////////////////////////////////////////////////////////////////////
     // ViewController delegate
     ////////////////////////////////////////////////////////////////////////////
@@ -44,9 +46,9 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         print("loading CameraViewController")
 
         print("setup AVCaptureSessions")
-        captureSessionNarrow.sessionPreset = AVCaptureSession.Preset.photo
         captureSessionWide.sessionPreset = AVCaptureSession.Preset.photo
-
+        captureSessionNarrow.sessionPreset = AVCaptureSession.Preset.photo
+        
         print("finding cameras")
         cameraWide = findCamera(AVCaptureDevice.DeviceType.builtInWideAngleCamera)
         cameraNarrow = findCamera(AVCaptureDevice.DeviceType.builtInTelephotoCamera)
@@ -64,24 +66,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
             return
         }
         
-        print("adding NFOV camera as input to captureSessionNarrow")
-        do
-        {
-            let captureDeviceInput = try AVCaptureDeviceInput(device: cameraNarrow!)
-            captureSessionNarrow.addInput(captureDeviceInput)
-            photoOutputNarrow = AVCapturePhotoOutput()
-            photoOutputNarrow?.setPreparedPhotoSettingsArray(
-                [AVCapturePhotoSettings(format: [AVVideoCodecKey: AVVideoCodecType.jpeg])],
-                completionHandler: nil)
-            captureSessionNarrow.addOutput(photoOutputNarrow!)
-        }
-        catch
-        {
-            print(error)
-            return
-        }
-        
-        print("adding WFOV camera as input to our captureSessionWide")
+        print("adding WFOV camera as input to captureSessionWide")
         do
         {
             let captureDeviceInput = try AVCaptureDeviceInput(device: cameraWide!)
@@ -98,9 +83,29 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
             return
         }
 
+        if useUVCamera
+        {
+            print("adding NFOV camera as input to captureSessionNarrow")
+            do
+            {
+                let captureDeviceInput = try AVCaptureDeviceInput(device: cameraNarrow!)
+                captureSessionNarrow.addInput(captureDeviceInput)
+                photoOutputNarrow = AVCapturePhotoOutput()
+                photoOutputNarrow?.setPreparedPhotoSettingsArray(
+                    [AVCapturePhotoSettings(format: [AVVideoCodecKey: AVVideoCodecType.jpeg])],
+                    completionHandler: nil)
+                captureSessionNarrow.addOutput(photoOutputNarrow!)
+            }
+            catch
+            {
+                print(error)
+                return
+            }
+        }
+        
         setCameraPreviewFullScreen()
 
-        activateNarrow()
+        activateWide()
     }
     
     override func viewWillDisappear(_ animated: Bool)
@@ -159,34 +164,35 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
             print("Outputted image of \(imageData)")
             if let image = UIImage(data: imageData)
             {
-                // did we just finish taking the NFOV (first) or WFOV (second) photo?
-                if (self.doingNarrow())
+                // did we just finish taking the WFOV (first) or NFOV (second) photo?
+                if (self.doingWide())
                 {
-                    // just finished taking the first (NFOV) image, upon click
+                    // just finished taking the first (WFOV) image, upon click
                     // of the button
-                    profile("take NFOV photo")
-                    
-                    // keep a copy for processing
-                    state!.imageNarrow = image
-                    
-                    // take the WFOV photo (which receipt will trigger multi-camera processing)
-                    resetClock()
-                    activateWide()
-                    takePhoto()
                     profile("take WFOV photo")
+                    state!.imageWide = image
+                    resetClock()
+                    
+                    if useUVCamera
+                    {
+                        // initiate the NFOV photo (which receipt will trigger multi-camera processing)
+                        activateNarrow()
+                        takePhoto()
+                        profile("take NFOV photo")
+                    }
                 }
                 else
                 {
-                    // just received the WFOV (second) image
+                    // just received the NFOV (second) image
                     
                     // store a copy
-                    state!.imageWide = image
+                    state!.imageNarrow = image
 
                     // perform multi-camera processing
                     performProcessing()
 
-                    // then reset back to NFOV preparatory to the next button-press
-                    activateNarrow()
+                    // then reset back to WFOV preparatory to the next button-press
+                    activateWide()
                 }
             }
         }
@@ -313,7 +319,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         imageViewPIP.image = nil
         imageViewFullScreen.image = nil
         
-        cameraPreviewLayer = AVCaptureVideoPreviewLayer(session: captureSessionNarrow)
+        cameraPreviewLayer = AVCaptureVideoPreviewLayer(session: captureSessionWide) // NOTE: WFOV is hard-coded here!
         cameraPreviewLayer?.videoGravity = AVLayerVideoGravity.resizeAspectFill
         cameraPreviewLayer?.connection?.videoOrientation = AVCaptureVideoOrientation.portrait
         cameraPreviewLayer?.frame = v.bounds
@@ -333,6 +339,11 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
     func doingNarrow() -> Bool
     {
         return captureSessionNarrow.isRunning
+    }
+    
+    func doingWide() -> Bool
+    {
+        return captureSessionWide.isRunning
     }
     
     func activateWide()
@@ -407,13 +418,13 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
                 let tintColor = CIColor(red: 1.0, green: 0.0, blue: 0.0)
                 
                 imageViewProcessed.image = N
-                
+                resetClock()
+
                 // This seems non-sensical, but it does something.  By default,
                 // the cropped WFOV was coming out rotated 90º CCW (top = west).
                 // When I explicitly rotated it 90º CW here, it came out (top =
                 // east).  So now I explicitly rotate it 0º, and the cropped
                 // version retains (top = north).
-                resetClock()
                 print("\(hr)rotating WFOV")
                 let Wr = W.rotate(radians: 0)!
                 save(Wr, "rotated WFOV")
@@ -427,24 +438,24 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
                 {
                     imageViewProcessed.image = Wc
                     save(Wc, "cropped WFOV")
-                    
                     resetClock()
+
                     print("\(hr)resizing NFOV")
                     if let Nc = Nr.resize(0.5)
                     {
                         imageViewProcessed.image = Nc
                         save(Nc, "resized NFOV")
                         profile("resize NFOV")
-                        
                         resetClock()
+
                         print("\(hr)converting WFOV to mono")
                         if let Wn = Wc.mono()
                         {
                             print("\(hr)saving mono WFOV")
                             save(Wn, "grayscale WFOV")
                             profile("grayscale WFOV")
-                            
                             resetClock()
+
                             print("\(hr)converting NFOV to mono")
                             if let Nn = Nc.mono()
                             {
@@ -452,38 +463,38 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
                                 save(Nn, "grayscale NFOV")
                                 imageViewProcessed.image = Nn
                                 profile("grayscale NFOV")
-                                
                                 resetClock()
+
                                 print("\(hr)generating UV")
-                                if let UV = Wn.diff(Nn)
+                                if let UV = Nn.adjustContrast(2.0)
                                 {
-                                    save(UV, "UV (WFOV - NFOV)")
+                                    save(UV, "UV (NFOV high-contrast)")
                                     profile("generate UV")
                                     imageViewProcessed.image = UV
-                                    
                                     resetClock()
-                                    print("\(hr)inverting UV")
-                                    if let UVi = UV.invert()
+
+                                    // print("\(hr)inverting UV")
+                                    if true // let UVi = UV.invert()
                                     {
-                                        save(UVi, "inverted UV")
-                                        profile("invert UV")
-                                        imageViewProcessed.image = UVi
-                                        
-                                        resetClock()
+                                        // save(UVi, "inverted UV")
+                                        // profile("invert UV")
+                                        // imageViewProcessed.image = UVi
+                                        // resetClock()
+
                                         print("\(hr)tinting UV")
-                                        if let T = UVi.tint(tintColor)
+                                        if let T = UV.tint(tintColor, 2.0) // was UVi
                                         {
                                             save(T, "tinted UV")
                                             imageViewProcessed.image = T
                                             profile("tint UV")
-                                            
                                             resetClock()
+
                                             print("\(hr)blending T atop W")
                                             if let blended = Wn.blend(T)
                                             {
                                                 profile("blended UV")
-                                                
                                                 resetClock()
+
                                                 imageViewProcessed.image = blended
                                                 save(blended, "blended VIS + UV", force: true)
                                                 profile("save final image")

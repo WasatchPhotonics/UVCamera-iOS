@@ -9,8 +9,16 @@ an iPhone XS.
 - [Swift 4 & iOS 11: Custom Camera View (Ep3 of Build a Custom Camera)](https://www.youtube.com/watch?v=7TqXrMnfJy8)
 - [Accelerate and vImage](https://developer.apple.com/documentation/accelerate)
 
+When an Android version floats up the priority stack, have a look at this:
+
+- https://medium.com/androiddevelopers/using-multiple-camera-streams-simultaneously-bf9488a29482
+
 # Version History
 
+- 2019-08-22 1.2.4
+    - moved default preview session from NFOV to WFOV
+    - added adjustContrast()
+    - playing with non-subtractive (filtered) UV acquisition
 - 2019-08-21 1.2.3
     - moved UV filter from WFOV to NFOV
     - added UIImage.invert()
