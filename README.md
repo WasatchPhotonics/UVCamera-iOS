@@ -14,7 +14,7 @@ Visually, it turns this (where left side of paper is treated with spray-on UV-ab
 
 This is the basic image processing pipeline:
 
-![Processing](https://github.com/WasatchPhotonics/UVCamera-iOS/raw/master/website/images/processing.jpeg)
+![Processing](https://github.com/WasatchPhotonics/UVCamera-iOS/raw/master/website/images/processing.png)
 
 # References
 
