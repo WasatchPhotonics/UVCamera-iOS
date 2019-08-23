@@ -27,9 +27,17 @@ class BlueFilter: CIFilter // was CustomFilter
     }
     
     // https://stackoverflow.com/a/42537079/11615696
+    //
+    // todo need to port this to Metal
+    // see https://medium.com/@shu223/core-image-filters-with-metal-71afd6377f4
+    // see https://developer.apple.com/metal/MetalCIKLReference6.pdf
+    // see https://developer.apple.com/documentation/coreimage/cikernel
     func createCustomKernel() -> CIColorKernel {
-        let _ = "kernel vec4 chromaKey( __sample s) { \n return vec4(s.r, 0.0, 0.0, s.a); \n }"
-        let kernelString =
+        // probably works, haven't tested (do we need linefeeds?)
+        let kernelString = "kernel vec4 chromaKey( __sample s) { return vec4(s.r, 0.0, 0.0, s.a); }"
+        
+        // this definitely worked
+        let _ =
             "kernel vec4 chromaKey( __sample s) { \n" +
                 "  vec4 newPixel = s.rgba;" +
                 "  newPixel[0] = 0.0;" +
