@@ -42,7 +42,7 @@ When an Android version floats up the priority stack, have a look at this:
     - added UIImage.invert()
 - 2019-07-22 1.2.2
     - added Launch Screen, online help
-    - submitted for TestFlight
+    - submitted for TestFlight (approved)
 - 2019-07-19 1.1.3
     - resolved most constraint warnings
     - fixed screens for 6.5", 5.5"
