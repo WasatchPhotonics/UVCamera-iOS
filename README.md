@@ -1,13 +1,24 @@
 # Overview
 
-UVCamera is an iPhone program designed to let the operator take photos from both
-the f/1.8 "wide-angle" and f/2.4 "telephoto" rear-facing cameras on the back of 
-an iPhone XS.
+UV Camera is an iPhone app designed to use the dual-rear cameras of an iPhone XS
+(or better), in combination with a custom UV filter inserted into the optical path
+of one camera, to enhance and highlight UV signal within a visual image.
+
+Visually, it turns this (where left side of paper is treated with spray-on UV-absorbant sunscreen):
+
+![VIS](https://github.com/WasatchPhotonics/UVCamera-iOS/raw/master/website/images/before-small.jpeg)
+
+...into this:
+
+![UV](https://github.com/WasatchPhotonics/UVCamera-iOS/raw/master/website/images/after-small.jpeg)
+
+This is the basic image processing pipeline:
+
+![Processing](https://github.com/WasatchPhotonics/UVCamera-iOS/raw/master/website/images/processing.jpeg)
 
 # References
 
 - [Swift 4 & iOS 11: Custom Camera View (Ep3 of Build a Custom Camera)](https://www.youtube.com/watch?v=7TqXrMnfJy8)
-- [Accelerate and vImage](https://developer.apple.com/documentation/accelerate)
 
 When an Android version floats up the priority stack, have a look at this:
 
@@ -15,6 +26,8 @@ When an Android version floats up the priority stack, have a look at this:
 
 # Version History
 
+- 2019-08-23
+	- migrated to GitHub
 - 2019-08-22 1.3.0
     - added normalize3()
     - added BlueFilter
@@ -33,7 +46,7 @@ When an Android version floats up the priority stack, have a look at this:
     - resolved most constraint warnings
     - fixed screens for 6.5", 5.5"
     - better handling of non-dual-camera iPhones
-    - first App Store submission [update: rejected]
+    - first App Store submission (rejected)
 - 2019-07-03 0.0.5
     - 3.5x speedup (removed manual pixel math)
 - 2019-07-02 0.0.4
