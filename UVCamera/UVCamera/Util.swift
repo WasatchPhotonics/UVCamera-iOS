@@ -33,8 +33,8 @@ class BlueFilter: CIFilter // was CustomFilter
     // see https://developer.apple.com/metal/MetalCIKLReference6.pdf
     // see https://developer.apple.com/documentation/coreimage/cikernel
     func createCustomKernel() -> CIColorKernel {
-        // probably works, haven't tested (do we need linefeeds?)
-        let kernelString = "kernel vec4 chromaKey( __sample s) { return vec4(s.r, 0.0, 0.0, s.a); }"
+        // seems to work
+        let kernelString = "kernel vec4 chromaKey( __sample s) { return vec4(0.0, 0.0, s.b, s.a); }"
         
         // this definitely worked
         let _ =
