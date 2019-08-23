@@ -6,11 +6,11 @@ of one camera, to enhance and highlight UV signal within a visual image.
 
 Visually, it turns this (where left side of paper is treated with spray-on UV-absorbant sunscreen):
 
-![VIS](https://github.com/WasatchPhotonics/UVCamera-iOS/raw/master/website/images/before-small.jpeg)
+![VIS](https://github.com/WasatchPhotonics/UVCamera-iOS/raw/master/website/images/before.jpeg)
 
 ...into this:
 
-![UV](https://github.com/WasatchPhotonics/UVCamera-iOS/raw/master/website/images/after-small.jpeg)
+![UV](https://github.com/WasatchPhotonics/UVCamera-iOS/raw/master/website/images/after.jpeg)
 
 This is the basic image processing pipeline:
 
