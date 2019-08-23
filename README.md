@@ -28,6 +28,7 @@ When an Android version floats up the priority stack, have a look at this:
 
 - 2019-08-23
 	- migrated to GitHub
+	- docs
 - 2019-08-22 1.3.0
     - added normalize3()
     - added BlueFilter
