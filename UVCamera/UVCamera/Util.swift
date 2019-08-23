@@ -26,6 +26,7 @@ class BlueFilter: CIFilter // was CustomFilter
         }
     }
     
+    // https://stackoverflow.com/a/42537079/11615696
     func createCustomKernel() -> CIColorKernel {
         let _ = "kernel vec4 chromaKey( __sample s) { \n return vec4(s.r, 0.0, 0.0, s.a); \n }"
         let kernelString =
