@@ -15,4 +15,8 @@ class State
     var imageNarrow : UIImage? = nil
     var imageProcessed : UIImage? = nil
     var saveComponents = false
+    
+    var debugA = false
+    var debugB = false
+    var debugC = false
 }

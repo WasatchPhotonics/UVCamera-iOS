@@ -90,6 +90,7 @@ extension UIImage
     func caption(text: String) -> UIImage
     {
         let textColor = UIColor.white
+        let backgroundColor = UIColor.black
         let textFont = UIFont(name: "Helvetica Bold", size: 48)!
         let point = CGPoint(x: 10, y: 10)
 
@@ -99,6 +100,7 @@ extension UIImage
         let textFontAttributes = [
             NSAttributedString.Key.font: textFont,
             NSAttributedString.Key.foregroundColor: textColor,
+            NSAttributedString.Key.backgroundColor: backgroundColor,
         ] as [NSAttributedString.Key : Any]
         self.draw(in: CGRect(origin: CGPoint.zero, size: self.size))
 

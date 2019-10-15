@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="14490.70" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="YNh-Me-ZD6">
-    <device id="retina5_9" orientation="portrait">
-        <adaptation id="fullscreen"/>
-    </device>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="15400" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="YNh-Me-ZD6">
+    <device id="retina5_9" orientation="portrait" appearance="light"/>
     <dependencies>
         <deployment identifier="iOS"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="14490.49"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="15404"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
@@ -39,7 +37,7 @@
                                 </connections>
                             </button>
                             <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="Logo" translatesAutoresizingMaskIntoConstraints="NO" id="3eh-AL-lqz">
-                                <rect key="frame" x="179.66666666666666" y="138" width="16" height="128"/>
+                                <rect key="frame" x="-48" y="138" width="471" height="128"/>
                                 <constraints>
                                     <constraint firstAttribute="height" constant="128" id="OYr-Oa-Asb"/>
                                 </constraints>
@@ -63,22 +61,46 @@
                                     <action selector="displayHelp:" destination="BYZ-38-t0r" eventType="touchUpInside" id="0jE-nJ-HaO"/>
                                 </connections>
                             </button>
+                            <switch opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" contentHorizontalAlignment="center" contentVerticalAlignment="center" on="YES" translatesAutoresizingMaskIntoConstraints="NO" id="2mp-7C-nk9">
+                                <rect key="frame" x="163" y="508" width="51" height="31"/>
+                                <connections>
+                                    <action selector="debugACallback:" destination="BYZ-38-t0r" eventType="valueChanged" id="48W-eh-rMp"/>
+                                </connections>
+                            </switch>
+                            <switch opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" contentHorizontalAlignment="center" contentVerticalAlignment="center" on="YES" translatesAutoresizingMaskIntoConstraints="NO" id="c1V-6c-W1M">
+                                <rect key="frame" x="163" y="549" width="51" height="31"/>
+                                <connections>
+                                    <action selector="debugBCallback:" destination="BYZ-38-t0r" eventType="valueChanged" id="mzp-tb-L9d"/>
+                                </connections>
+                            </switch>
+                            <switch opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" contentHorizontalAlignment="center" contentVerticalAlignment="center" on="YES" translatesAutoresizingMaskIntoConstraints="NO" id="HcW-9W-yY3">
+                                <rect key="frame" x="163" y="590" width="51" height="31"/>
+                                <connections>
+                                    <action selector="debugCCallback:" destination="BYZ-38-t0r" eventType="valueChanged" id="qhR-eG-OF6"/>
+                                </connections>
+                            </switch>
                         </subviews>
                         <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <constraints>
+                            <constraint firstItem="smJ-vR-Axt" firstAttribute="top" secondItem="HcW-9W-yY3" secondAttribute="bottom" constant="20" id="0La-7y-68L"/>
                             <constraint firstItem="ayA-NR-afS" firstAttribute="leading" secondItem="qkw-hE-Vli" secondAttribute="leading" id="0YM-jl-ww3" userLabel="Background.leading = Safe Area.leading"/>
                             <constraint firstItem="ayA-NR-afS" firstAttribute="top" secondItem="qkw-hE-Vli" secondAttribute="top" id="1VC-LC-2xc"/>
+                            <constraint firstItem="HcW-9W-yY3" firstAttribute="centerX" secondItem="8bC-Xf-vdC" secondAttribute="centerX" id="24U-me-0mz"/>
                             <constraint firstItem="ojH-ij-bgg" firstAttribute="top" secondItem="dve-sc-Tuk" secondAttribute="bottom" constant="25" id="3Wq-Ei-qiI"/>
                             <constraint firstItem="3eh-AL-lqz" firstAttribute="centerX" secondItem="gt6-Qp-IOP" secondAttribute="centerX" id="4Ah-qc-U2i" userLabel="Logo.centerX = centerX"/>
+                            <constraint firstItem="2mp-7C-nk9" firstAttribute="centerX" secondItem="8bC-Xf-vdC" secondAttribute="centerX" id="5Sx-Hn-kx8"/>
                             <constraint firstItem="qkw-hE-Vli" firstAttribute="trailing" secondItem="ayA-NR-afS" secondAttribute="trailing" id="6Zw-xY-bSM" userLabel="Background.trailing = Safe Area.trailing"/>
+                            <constraint firstItem="c1V-6c-W1M" firstAttribute="top" secondItem="2mp-7C-nk9" secondAttribute="bottom" constant="10" id="D0B-Ta-yRd"/>
                             <constraint firstItem="3eh-AL-lqz" firstAttribute="top" secondItem="qkw-hE-Vli" secondAttribute="top" constant="50" id="DFa-Qf-Ij8" userLabel="Logo.top = top + 50"/>
                             <constraint firstItem="gt6-Qp-IOP" firstAttribute="centerX" secondItem="smJ-vR-Axt" secondAttribute="centerX" id="ICd-4m-7Vh" userLabel="Start.centerX = centerX"/>
+                            <constraint firstItem="c1V-6c-W1M" firstAttribute="centerX" secondItem="8bC-Xf-vdC" secondAttribute="centerX" id="IQ0-Sw-y3B"/>
                             <constraint firstItem="gt6-Qp-IOP" firstAttribute="centerY" secondItem="8bC-Xf-vdC" secondAttribute="centerY" id="Otk-56-MG5"/>
                             <constraint firstItem="dve-sc-Tuk" firstAttribute="centerX" secondItem="qkw-hE-Vli" secondAttribute="centerX" id="U0E-zl-7bB"/>
                             <constraint firstAttribute="bottom" secondItem="ayA-NR-afS" secondAttribute="bottom" id="ZcK-0o-iMa"/>
                             <constraint firstItem="ojH-ij-bgg" firstAttribute="centerX" secondItem="8bC-Xf-vdC" secondAttribute="centerX" id="hCH-oD-ypM"/>
                             <constraint firstItem="dve-sc-Tuk" firstAttribute="top" secondItem="smJ-vR-Axt" secondAttribute="bottom" constant="10" id="lzv-eD-kl6"/>
                             <constraint firstItem="smJ-vR-Axt" firstAttribute="centerX" secondItem="dve-sc-Tuk" secondAttribute="centerX" id="miO-Me-HeM"/>
+                            <constraint firstItem="HcW-9W-yY3" firstAttribute="top" secondItem="c1V-6c-W1M" secondAttribute="bottom" constant="10" id="pdr-fq-Gm9"/>
                             <constraint firstItem="qkw-hE-Vli" firstAttribute="bottom" secondItem="dve-sc-Tuk" secondAttribute="bottom" constant="75" id="pkX-bT-3EW" userLabel="bottom = Save image components.bottom + 75"/>
                         </constraints>
                         <viewLayoutGuide key="safeArea" id="qkw-hE-Vli"/>
