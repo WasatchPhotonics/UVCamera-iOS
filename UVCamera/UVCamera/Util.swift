@@ -11,7 +11,7 @@ import UIKit
 import Accelerate
 
 // https://spin.atomicobject.com/2016/10/20/ios-image-filters-in-swift/
-class BlueFilter: CIFilter // was CustomFilter
+class BlueFilter: CIFilter
 {
     @objc dynamic var inputImage: CIImage?
     
@@ -38,11 +38,47 @@ class BlueFilter: CIFilter // was CustomFilter
         
         // this definitely worked
         let _ =
-            "kernel vec4 chromaKey( __sample s) { \n" +
-                "  vec4 newPixel = s.rgba;" +
-                "  newPixel[0] = 0.0;" +
-                "  newPixel[1] = 0.0;" +
-                "  return newPixel;\n" +
+            "kernel vec4 chromaKey( __sample s) {" +
+                "vec4 newPixel = s.rgba;" +
+                "newPixel[0] = 0.0;" +
+                "newPixel[1] = 0.0;" +
+                "return newPixel;" +
+        "}"
+        return CIColorKernel(source: kernelString)!
+    }
+}
+
+class DropBlueFilter: CIFilter
+{
+    @objc dynamic var inputImage: CIImage?
+    
+    override public var outputImage: CIImage! {
+        get {
+            if let inputImage = self.inputImage {
+                let args = [inputImage as AnyObject]
+                return createCustomKernel().apply(extent: inputImage.extent, arguments: args)
+            } else {
+                return nil
+            }
+        }
+    }
+    
+    // https://stackoverflow.com/a/42537079/11615696
+    //
+    // todo need to port this to Metal
+    // see https://medium.com/@shu223/core-image-filters-with-metal-71afd6377f4
+    // see https://developer.apple.com/metal/MetalCIKLReference6.pdf
+    // see https://developer.apple.com/documentation/coreimage/cikernel
+    func createCustomKernel() -> CIColorKernel {
+        // seems to work
+        let kernelString = "kernel vec4 chromaKey( __sample s) { return vec4(0.0, 0.0, s.b, s.a); }"
+        
+        // this definitely worked
+        let _ =
+            "kernel vec4 chromaKey( __sample s) {" +
+                "vec4 newPixel = s.rgba;" +
+                "newPixel[2] = 0.0;" +
+                "return newPixel;" +
         "}"
         return CIColorKernel(source: kernelString)!
     }
@@ -50,12 +86,65 @@ class BlueFilter: CIFilter // was CustomFilter
 
 extension UIImage
 {
+    // https://stackoverflow.com/a/28907826/11615696
+    func caption(text: String) -> UIImage
+    {
+        let textColor = UIColor.white
+        let textFont = UIFont(name: "Helvetica Bold", size: 48)!
+        let point = CGPoint(x: 10, y: 10)
+
+        let scale = UIScreen.main.scale
+        UIGraphicsBeginImageContextWithOptions(self.size, false, scale)
+
+        let textFontAttributes = [
+            NSAttributedString.Key.font: textFont,
+            NSAttributedString.Key.foregroundColor: textColor,
+        ] as [NSAttributedString.Key : Any]
+        self.draw(in: CGRect(origin: CGPoint.zero, size: self.size))
+
+        let rect = CGRect(origin: point, size: self.size)
+        text.draw(in: rect, withAttributes: textFontAttributes)
+
+        let newImage = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+
+        return newImage!
+    }
+    
+    // https://stackoverflow.com/a/43206409/11615696
+    func copy() -> UIImage?
+    {
+        guard let cgImage = self.cgImage else { return nil }
+        return UIImage(cgImage: cgImage,
+                       scale: self.scale,
+                       orientation: self.imageOrientation)
+    }
+    
     func justBlue() -> UIImage?
     {
         guard let cgImage = self.cgImage else { return nil }
         let inputCIImage = CoreImage.CIImage(cgImage: cgImage)
         
         let filter = BlueFilter()
+        filter.setValue(inputCIImage, forKey: kCIInputImageKey)
+        
+        // Get the filtered output image and return it
+        let outputImage = filter.outputImage!
+
+        let context = CIContext()
+        if let cgimg = context.createCGImage(outputImage, from: outputImage.extent)
+        {
+            return UIImage(cgImage: cgimg)
+        }
+        return nil
+    }
+    
+    func dropBlue() -> UIImage?
+    {
+        guard let cgImage = self.cgImage else { return nil }
+        let inputCIImage = CoreImage.CIImage(cgImage: cgImage)
+        
+        let filter = DropBlueFilter()
         filter.setValue(inputCIImage, forKey: kCIInputImageKey)
         
         // Get the filtered output image and return it

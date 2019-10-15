@@ -35,9 +35,11 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
     
     var useUVCamera = true
     
-    ////////////////////////////////////////////////////////////////////////////
+    let captionPhotos = true
+    
+    // -------------------------------------------------------------------------
     // ViewController delegate
-    ////////////////////////////////////////////////////////////////////////////
+    // -------------------------------------------------------------------------
 
     override func viewDidLoad()
     {
@@ -151,9 +153,9 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         }
     }
 
-    ////////////////////////////////////////////////////////////////////////////
+    // -------------------------------------------------------------------------
     // AVCapturePhotoCaptureDelegate
-    ////////////////////////////////////////////////////////////////////////////
+    // -------------------------------------------------------------------------
     
     // after a photo has been taken with the NFOV or WFOV cameras, the photo
     // will be returned via this event
@@ -215,9 +217,9 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         }
     }
 
-    ////////////////////////////////////////////////////////////////////////////
+    // -------------------------------------------------------------------------
     // Callbacks
-    ////////////////////////////////////////////////////////////////////////////
+    // -------------------------------------------------------------------------
 
     @IBAction func cameraButton_TouchUpInside(_ sender: Any)
     {
@@ -241,15 +243,15 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         }
     }
 
-    ////////////////////////////////////////////////////////////////////////////
+    // -------------------------------------------------------------------------
     //
     //                              Methods
     //
-    ////////////////////////////////////////////////////////////////////////////
+    // -------------------------------------------------------------------------
 
-    ////////////////////////////////////////////////////////////////////////////
+    // -------------------------------------------------------------------------
     // Lifecycle
-    ////////////////////////////////////////////////////////////////////////////
+    // -------------------------------------------------------------------------
 
     // used at startup to find the WFOV and NFOV cameras
     func findCamera(_ deviceType: AVCaptureDevice.DeviceType) -> AVCaptureDevice?
@@ -267,10 +269,10 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         return nil
     }
     
-    ////////////////////////////////////////////////////////////////////////////
+    // -------------------------------------------------------------------------
     // Utility
-    ////////////////////////////////////////////////////////////////////////////
-    
+    // -------------------------------------------------------------------------
+
     // display a modal message box
     func showAlertWith(title: String, message: String)
     {
@@ -294,10 +296,10 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         // resetClock()
     }
     
-    ////////////////////////////////////////////////////////////////////////////
+    // -------------------------------------------------------------------------
     // PIP vs FullScreen Views
-    ////////////////////////////////////////////////////////////////////////////
-    
+    // -------------------------------------------------------------------------
+
     func setCameraPreviewFullScreen()
     {
         imageViewProcessed = imageViewPIP
@@ -332,9 +334,9 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         cameraPreviewLayer = nil
     }
 
-    ////////////////////////////////////////////////////////////////////////////
+    // -------------------------------------------------------------------------
     // Switching between WFOV and NFOV
-    ////////////////////////////////////////////////////////////////////////////
+    // -------------------------------------------------------------------------
 
     func doingNarrow() -> Bool
     {
@@ -366,10 +368,10 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         captureSessionNarrow.startRunning()
     }
 
-    ////////////////////////////////////////////////////////////////////////////
+    // -------------------------------------------------------------------------
     // Taking Photos
-    ////////////////////////////////////////////////////////////////////////////
-    
+    // -------------------------------------------------------------------------
+
     // request a photo be taken from the currently selected camera
     func takePhoto()
     {
@@ -389,177 +391,335 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         print("Saving \(label)...")
         
         // https://stackoverflow.com/a/40858152
-        UIImageWriteToSavedPhotosAlbum(image, self, #selector(image(_:didFinishSavingWithError:contextInfo:)), nil)
+        UIImageWriteToSavedPhotosAlbum(captionPhotos ? image.caption(text:label) : image, self, #selector(image(_:didFinishSavingWithError:contextInfo:)), nil)
     }
 
-    ////////////////////////////////////////////////////////////////////////////
+    // -------------------------------------------------------------------------
     // Image Processing
-    ////////////////////////////////////////////////////////////////////////////
-    
-    // After we've taken both WFOV and NFOV raw images, this function performs
-    // all the seqeuenced transformations that generate the post-processed image.
+    // -------------------------------------------------------------------------
+
     func performProcessing()
     {
-        let hr = "\n"
+        let name = "performProcessing"
+
+        // ---------------------------------------------------------------------
+        // Pre-process the two images to align them in size and contents so they
+        // may be compared, subtracted etc
+        // ---------------------------------------------------------------------
+
+        guard let W = state!.imageWide else
+        {
+            print("\(name): no WFOV")
+            return
+        }
         
-        print("processing")
-        if let W = state!.imageWide
+        guard let N = state!.imageNarrow else
         {
-            if let N = state!.imageNarrow
-            {
-                // Assuming LPF is on N, where:
-                //   W = WFOV
-                //   N = NFOV
-                //   U = UV
-                // U = W - N
-                // T = tint(U)
-                // display(T atop W)
-                
-                let tintColor = CIColor(red: 1.0, green: 0.0, blue: 0.0)
-                
-                imageViewProcessed.image = N
-                resetClock()
-
-                // This seems non-sensical, but it does something.  By default,
-                // the cropped WFOV was coming out rotated 90º CCW (top = west).
-                // When I explicitly rotated it 90º CW here, it came out (top =
-                // east).  So now I explicitly rotate it 0º, and the cropped
-                // version retains (top = north).
-                print("\(hr)rotating WFOV")
-                let Wr = W.rotate(radians: 0)!
-                save(Wr, "rotated WFOV")
-                profile("rotate WFOV")
-                
-                // no need to rotate NFOV (don't ask me why)
-                
-                print("\(hr)cropping WFOV")
-                if let Wc = Wr.crop(percent: 0.5)
-                {
-                    imageViewProcessed.image = Wc
-                    save(Wc, "cropped WFOV")
-                    resetClock()
-
-                    print("\(hr)resizing NFOV")
-                    if let Nc = N.resize(0.5)
-                    {
-                        imageViewProcessed.image = Nc
-                        save(Nc, "resized NFOV")
-                        profile("resize NFOV")
-                        resetClock()
-
-                        print("\(hr)stripping NFOV red and green channels")
-                        if let Nb = Nc.justBlue()
-                        {
-                            imageViewProcessed.image = Nb
-                            save(Nb, "blue NFOV")
-                            profile("blue NFOV")
-                            resetClock()
-                            
-                            print("\(hr)converting WFOV to mono")
-                            if let Wn = Wc.mono()
-                            {
-                                print("\(hr)saving mono WFOV")
-                                save(Wn, "grayscale WFOV")
-                                profile("grayscale WFOV")
-                                resetClock()
-                                
-                                print("\(hr)converting NFOV to mono")
-                                if let Nn = Nb.mono()
-                                {
-                                    print("\(hr)saving mono NFOV")
-                                    save(Nn, "grayscale NFOV")
-                                    imageViewProcessed.image = Nn
-                                    profile("grayscale NFOV")
-                                    resetClock()
-                                    
-                                    print("\(hr)generating UV")
-                                    if let UV = Nn.normalize3()
-                                    {
-                                        save(UV, "UV (NFOV normalized)")
-                                        profile("generate UV")
-                                        imageViewProcessed.image = UV
-                                        resetClock()
-
-                                        print("\(hr)cranking UV contrast")
-                                        if let UVc = UV.adjustContrast(1.5)
-                                        {
-                                            save(UVc, "high-contrast UV")
-                                            profile("high-contrast UV")
-                                            imageViewProcessed.image = UVc
-                                            resetClock()
-                                            
-                                            print("\(hr)tinting UV")
-                                            if let T = UVc.tint(tintColor, 2.0)
-                                            {
-                                                save(T, "tinted UV")
-                                                imageViewProcessed.image = T
-                                                profile("tint UV")
-                                                resetClock()
-                                                
-                                                print("\(hr)blending T atop W")
-                                                if let blended = Wn.blend(T)
-                                                {
-                                                    profile("blended UV")
-                                                    resetClock()
-                                                    
-                                                    imageViewProcessed.image = blended
-                                                    save(blended, "blended VIS + UV", force: true)
-                                                    profile("save final image")
-                                                }
-                                                else
-                                                {
-                                                    print("final blend failed")
-                                                }
-                                            }
-                                            else
-                                            {
-                                                print("tint failed")
-                                            }
-                                        }
-                                        else
-                                        {
-                                            print("failed to crank UV contrast")
-                                        }
-                                    }
-                                    else
-                                    {
-                                        print("Nn - Wn diff failed")
-                                    }
-                                }
-                                else
-                                {
-                                    print("failed to convert NFOV to grayscale")
-                                }
-                            }
-                            else
-                            {
-                                print("failed to convert WFOV to grayscale")
-                            }
-
-                        }
-                        else
-                        {
-                            print("failed to blue NFOV")
-                        }
-                    }
-                    else
-                    {
-                        print("failed to resize NFOV")
-                    }
-                }
-                else
-                {
-                    print("failed to crop WFOV")
-                }
-            }
-            else
-            {
-                print("processing: no NFOV")
-            }
+            print("\(name): no NFOV")
+            return
         }
-        else
+        
+        // Assuming LPF is on N, where:
+        //   W = WFOV (Unfiltered)
+        //   N = NFOV (Filtered)
+                
+        // This seems non-sensical, but it does something.  By default,
+        // the cropped WFOV was coming out rotated 90º CCW (top = west).
+        // When I explicitly rotated it 90º CW here, it came out (top =
+        // east).  So now I explicitly rotate it 0º, and the cropped
+        // version retains (top = north).
+        guard let Wr = W.rotate(radians: 0) else
         {
-            print("processing: no WFOV")
+            print("\(name): failed wide rotation")
+            return
         }
+        save(Wr, "rotated WFOV")
+        
+        // no need to rotate NFOV (don't ask me why)
+        
+        guard let unfiltered = Wr.crop(percent: 0.5) else
+        {
+            print("\(name) failed to crop WFOV")
+            return
+        }
+        save(unfiltered, "cropped WFOV")
+
+        guard let filtered = N.resize(0.5) else
+        {
+            print("\(name) failed to resize NFOV")
+            return
+        }
+        save(filtered, "resized NFOV")
+
+        // ---------------------------------------------------------------------
+        // We now have mostly-identical wide (unfiltered) and
+        // narrow (filtered) images with the same pixel dimensions,
+        // framing and contents, just different sharpness (the
+        // WFOV/unfiltered is blurrier).
+        // ---------------------------------------------------------------------
+
+        // if we’re specifically looking to find UV absorbance, and as an
+        // approximation we’re using shadows which are particularly or uniquely
+        // dark in the (380, 410nm) to represent that, then we should be able to
+        // bring those out using something like this:
+        //
+        // WHERE:
+        //     Suv  = Shadows exclusively in the range (380, 410nm) (not appearing in Svis)
+        //     Svis = Shadows anywhere in VIS (410, 740nm)
+        //     Sf   = Shadows in filtered camera (380, 410nm)
+        //     Sgr  = Shadows in green, red region (500, 740nm)
+        //     Sb   = Shadows in blue region (380, 500nm)
+        //     Sb’  = Shadows in blue region, above filter (410, 500nm)
+        //
+        // PROCESS:
+        // generate Sf: copy filtered orig; drop green, red channels; grayscale; invert; increase contrast (will show white for shadows in (380, 410); black for light in (380, 410))
+        // generate Sgr: copy unfiltered orig; drop blue channel; grayscale; invert; increase contrast (white for shadows in (500, 740); black for light in (500, 740))
+        // generate Sb: copy unfiltered orig; drop green, red channels; grayscale; invert; increase contrast (white for shadows in (380, 500); black for light in (380, 500))
+        // compute Sb’: Sf - Sb (white for shadows in (410, 500); black for light in (410, 500))
+        // compute Svis = Sgr + Sb’ (white for shadows in (410, 740); black for light in (410, 740))
+        // compute Suv = Sf - Svis (white for shadows exclusively in (380, 410))
+        //
+        // Then if we tint Suv and blend it atop the original unfiltered image,
+        // we should be highlighting regions which are especially low in UV.
+        
+        guard let Sf = generateShadowsInFiltered(filtered: filtered) else
+        {
+            print("\(name): failed generateShadowsInFiltered")
+            return
+        }
+        save(Sf, "Sf (shadows in filtered)")
+        
+        guard let Sgr = generateShadowsInGreenRed(unfiltered: unfiltered) else
+        {
+            print("\(name): failed generateShadowsInGreenRed")
+            return
+        }
+        save(Sgr, "Sgr (shadows in green/red)")
+        
+        guard let Sb = generateShadowsInBlue(unfiltered: unfiltered) else
+        {
+            print("\(name): failed generateShadowsInBlue")
+            return
+        }
+        save(Sb, "Sb (shadows in blue)")
+        
+        guard let SbP = generateShadowsInBlueAboveFilter(shadowsFiltered: Sf, shadowsInBlue: Sb) else
+        {
+            print("\(name): failed generateShadowsInBlueAboveFilter")
+            return
+        }
+        save(SbP, "Sb' (shadows in blue above filter)")
+        
+        guard let Svis = generateShadowsInVIS(shadowsInGreenRed: Sgr, shadowsInBlueAboveFilter: SbP) else
+        {
+            print("\(name): failed generateShadowsInVIS")
+            return
+        }
+        save(Svis, "Svis (shadows in VIS)")
+        
+        guard let Suv = generateShadowsInUV(shadowsInFiltered: Sf, shadowsInVIS: Svis) else
+        {
+            print("\(name): failed generateShadowsInUV")
+            return
+        }
+        save(Suv, "Suv (shadows in UV)")
+        
+        let tintColor = CIColor(red: 1.0, green: 0.0, blue: 0.0)
+        guard let SuvT = Suv.tint(tintColor) else
+        {
+            print("\(name): failed tint")
+            return
+        }
+        save(SuvT, "SuvT (tinted UV shadows)")
+        
+        guard let final = unfiltered.blend(SuvT) else
+        {
+            print("\(name): failed final blend")
+            return
+        }
+        save(final, "final (tinted UV over unfiltered)")
+
+        imageViewProcessed.image = final
+    }
+    
+    // compute Suv = Sf - Svis (white for shadows exclusively in (380, 410)
+    func generateShadowsInUV(shadowsInFiltered: UIImage, shadowsInVIS: UIImage) -> UIImage?
+    {
+        return shadowsInFiltered.diff(shadowsInVIS)
+    }
+    
+    // @brief compute Svis = Sgr + Sb’
+    // @returns white for shadows in (410, 740); black for light in (410, 740)
+    func generateShadowsInVIS(shadowsInGreenRed: UIImage, shadowsInBlueAboveFilter: UIImage) -> UIImage?
+    {
+        return shadowsInGreenRed.blend(shadowsInBlueAboveFilter)
+    }
+    
+    // compute Sb’ (Sf - Sb)
+    //
+    // @returns white for shadows in (410, 500); black for light in (410, 500)
+    func generateShadowsInBlueAboveFilter(shadowsFiltered: UIImage, shadowsInBlue: UIImage) -> UIImage?
+    {
+        // is this the right kind of subtraction?
+        return shadowsInBlue.diff(shadowsFiltered)
+    }
+
+    // @brief Generate shadows in blue region (380, 500nm)
+    //
+    // process: copy unfiltered orig; drop green, red channels; grayscale; invert; increase contrast
+    //
+    // @returns white for shadows in (380, 500); black for light in (380, 500)
+    func generateShadowsInBlue(unfiltered: UIImage) -> UIImage?
+    {
+        var tmp: UIImage? = nil
+        let name = "generateShadowsInBlue"
+        
+        // copy unfiltered orig
+        tmp = unfiltered.copy()
+        if tmp == nil
+        {
+            print("\(name): failed copy")
+            return nil
+        }
+        
+        // drop green, red channels
+        tmp = tmp!.justBlue()
+        if tmp == nil
+        {
+            print("\(name): failed justBlue")
+            return nil
+        }
+        
+        // grayscale
+        tmp = tmp!.mono()
+        if tmp == nil
+        {
+            print("\(name): failed mono")
+            return nil
+        }
+        
+        // invert
+        tmp = tmp!.invert()
+        if tmp == nil
+        {
+            print("\(name): failed invert")
+            return nil
+        }
+        
+        // contrast
+        tmp = tmp!.adjustContrast(1.5)
+        if tmp == nil
+        {
+            print("\(name): failed contrast")
+        }
+        
+        // return white for shadows in (380, 500); black for light in (380, 500)
+        return tmp
+    }
+    
+    // @brief generate shadows in unfiltered green/red region (500, 740nm)
+    //
+    // process: copy unfiltered orig; drop blue channel; grayscale; invert; increase contrast
+    //
+    // @returns white for shadows in (500, 740); black for light in (500, 740)
+    func generateShadowsInGreenRed(unfiltered: UIImage) -> UIImage?
+    {
+        var tmp: UIImage? = nil
+        let name = "generateShadowsInGreenRed"
+        
+        // copy unfiltered orig
+        tmp = unfiltered.copy()
+        if tmp == nil
+        {
+            print("\(name): failed copy")
+            return nil
+        }
+        
+        // drop blue
+        tmp = tmp!.dropBlue()
+        if tmp == nil
+        {
+            print("\(name): failed dropBlue")
+            return nil
+        }
+        
+        // grayscale
+        tmp = tmp!.mono()
+        if tmp == nil
+        {
+            print("\(name): failed mono")
+            return nil
+        }
+        
+        // invert
+        tmp = tmp!.invert()
+        if tmp == nil
+        {
+            print("\(name): failed invert")
+            return nil
+        }
+        
+        // contrast
+        tmp = tmp!.adjustContrast(1.5)
+        if tmp == nil
+        {
+            print("\(name): failed contrast")
+        }
+        
+        // return white for shadows in (500, 740); black for light in (500, 740)
+        return tmp
+    }
+
+    // @brief generate shadows in filtered camera (380, 410nm)
+    //
+    // Process: copy filtered orig; drop green, red channels; grayscale; invert; increase contrast
+    //
+    // @return white for shadows in (380, 410); black for light in (380, 410)
+    func generateShadowsInFiltered(filtered: UIImage) -> UIImage?
+    {
+        var tmp : UIImage? = nil
+        let name = "generateShadowsInFiltered"
+
+        // copy filtered orig
+        tmp = filtered.copy()
+        if tmp == nil
+        {
+            print("\(name): failed copy")
+            return nil
+        }
+        
+        // drop green, red channels
+        tmp = tmp!.justBlue()
+        if tmp == nil
+        {
+            print("\(name): failed justBlue")
+            return nil
+        }
+        
+        // grayscale
+        tmp = tmp!.mono()
+        if tmp == nil
+        {
+            print("\(name): failed mono")
+            return nil
+        }
+        
+        // invert
+        tmp = tmp!.invert()
+        if tmp == nil
+        {
+            print("\(name): failed invert")
+            return nil
+        }
+        
+        // contrast
+        tmp = tmp!.adjustContrast(1.5)
+        if tmp == nil
+        {
+            print("\(name): failed contrast")
+        }
+        
+        // will show white for shadows in (380, 410); black for light in (380, 410)
+        return tmp
     }
 }

@@ -24,11 +24,47 @@ When an Android version floats up the priority stack, have a look at this:
 
 - https://medium.com/androiddevelopers/using-multiple-camera-streams-simultaneously-bf9488a29482
 
+# Backlog
+
+If we’re specifically looking to find UV absorbance, and as an approximation 
+we’re using shadows which are particularly or uniquely dark in the (380, 410nm) 
+to represent that, then we should be able to bring those out using something like
+this:
+
+WHERE:
+
+- Suv = Shadows exclusively in the range (380, 410nm) (not appearing in Svis)
+- Svis = Shadows anywhere in VIS (410, 740nm)
+- Sf = Shadows in filtered camera (380, 410nm)
+- Sgr = Shadows in green, red region (500, 740nm)
+- Sb = Shadows in blue region (380, 500nm)
+- Sb’ = Shadows in blue region, above filter (410, 500nm)
+
+PROCEDURE:
+
+- generate Sf: copy filtered orig; drop green, red channels; grayscale; invert; 
+  increase contrast (will show white for shadows in (380, 410); black for light 
+  in (380, 410))
+- generate Sgr: copy unfiltered orig; drop blue channel; grayscale; invert; 
+  increase contrast (white for shadows in (500, 740); black for light in (500, 740))
+- generate Sb: copy unfiltered orig; drop green, red channels; grayscale; invert;
+  increase contrast (white for shadows in (380, 500); black for light in (380, 500))
+- compute Sb’: Sf - Sb (white for shadows in (410, 500); black for light in (410, 500))
+- compute Svis = Sgr + Sb’ (white for shadows in (410, 740); black for light in (410, 740))
+- compute Suv = Sf - Svis (white for shadows exclusively in (380, 410))
+
+So then if we tint Suv and blend it atop the original unfiltered image, we should
+be highlighting regions which are especially low in UV.
+
 # Version History
 
+- 2019-10-15 2.0.0
+    - redesigned image processing pipeline for UV absorbance
+    - added UIImage.copy, .dropBlue, .caption
+    - runs, not spectrally evaluated
 - 2019-08-23
-	- migrated to GitHub
-	- docs
+    - migrated to GitHub
+    - docs
 - 2019-08-22 1.3.0
     - added normalize3()
     - added BlueFilter
