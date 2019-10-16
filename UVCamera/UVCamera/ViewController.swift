@@ -50,5 +50,8 @@ class ViewController: UIViewController {
         let flag = sender as! UISwitch
         return flag.isOn
     }
+    
+    
+    
 }
 

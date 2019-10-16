@@ -11,7 +11,7 @@ import UIKit
 import AVFoundation
 
 /// @see https://www.youtube.com/watch?v=7TqXrMnfJy8&list=PLaXWdRaxFtVcIwNK3ylcG9K8P8xYNirLl&index=3
-class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
+class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate
 {
     @IBOutlet weak var imageViewFullScreen: UIImageView!
     @IBOutlet weak var imageViewPIP: UIImageView!
@@ -32,17 +32,22 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
     
     var cameraPreviewLayer: AVCaptureVideoPreviewLayer?
     var previewFullScreen = true
-    
+
+    // you can set this to false to only use the "VIS" camera for
+    // minimal workflow testing on a single-camera iPhone
     var useUVCamera = true
     
     let captionPhotos = true
     
+    // these are used to cache in-work processing artifacts between tasks
     var unfiltered : UIImage?
     var filtered : UIImage?
     var Sf : UIImage?
     var Sgr : UIImage?
     var Sb : UIImage?
     var final : UIImage?
+    
+    var imagePicker = UIImagePickerController()
     
     // -------------------------------------------------------------------------
     // ViewController delegate
@@ -232,6 +237,41 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
     }
 
     // -------------------------------------------------------------------------
+    // UIImagePickerControllerDelegate
+    // -------------------------------------------------------------------------
+
+    @objc(imagePickerController:didFinishPickingMediaWithInfo:) func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any])
+    {
+        print("imagePickerController.didFinishPickingImage")
+        imagePicker.dismiss(animated: true, completion: nil)
+        let image = info[UIImagePickerController.InfoKey.originalImage] as! UIImage
+
+        // load WFOV (unfiltered) first
+        if state!.imageWide == nil
+        {
+            print("storing picked image as WFOV (unfiltered)")
+            state!.imageWide = image
+            
+            // prompt to load NFOV (filtered)
+            print("re-presenting picker for NFOV")
+            present(imagePicker, animated: true, completion: nil)
+        }
+        else if state!.imageNarrow == nil
+        {
+            print("storing picked image as NFOV (filtered)")
+            state!.imageNarrow = image
+            
+            // kick-off processing
+            print("processing picked images")
+            performProcessing(reprocessing: true)
+
+            // then reset back to WFOV preparatory to the next button-press
+            print("resetting after processing picked images")
+            activateWide()
+        }
+    }
+    
+    // -------------------------------------------------------------------------
     // Callbacks
     // -------------------------------------------------------------------------
 
@@ -256,7 +296,24 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
             setCameraPreviewFullScreen()
         }
     }
+    
+    @IBAction func loadClicked(_ sender: UIButton)
+    {
+        state!.imageNarrow = nil
+        state!.imageWide = nil
+        
+        if UIImagePickerController.isSourceTypeAvailable(.savedPhotosAlbum)
+        {
+            print("Loading WFOV and NFOV from gallery")
 
+            imagePicker.delegate = self
+            imagePicker.sourceType = .savedPhotosAlbum
+            imagePicker.allowsEditing = false
+
+            present(imagePicker, animated: true, completion: nil)
+        }
+    }
+    
     // -------------------------------------------------------------------------
     //
     //                              Methods
@@ -429,7 +486,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
     // on the NFOV camera, i.e.:
     //   WFOV = Unfiltered
     //   NFOV = Filtered
-    func performProcessing()
+    func performProcessing(reprocessing: Bool = false)
     {
         let name = "performProcessing"
         print("starting processing")
@@ -451,14 +508,23 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
             return
         }
         
-        generateUnfiltered()
+        if reprocessing
+        {
+            // don't re-scale, re-crop the loaded images
+            filtered = state!.imageNarrow
+            unfiltered = state!.imageWide
+        }
+        else
+        {
+            generateUnfiltered()
+            generateFiltered()
+        }
+
         if unfiltered == nil
         {
             print("\(name): failed to generate unfiltered")
             return
         }
-
-        generateFiltered()
         if filtered == nil
         {
             print("\(name): failed to generate filtered")

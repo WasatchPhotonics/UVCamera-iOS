@@ -132,6 +132,13 @@
                                     <action selector="cameraButton_TouchUpInside:" destination="FOj-Qu-blB" eventType="touchUpInside" id="KDz-u3-syu"/>
                                 </connections>
                             </button>
+                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="djh-nT-3gT">
+                                <rect key="frame" x="170.66666666666666" y="738" width="34" height="30"/>
+                                <state key="normal" title="Load"/>
+                                <connections>
+                                    <action selector="loadClicked:" destination="FOj-Qu-blB" eventType="touchUpInside" id="C2o-yW-3jJ"/>
+                                </connections>
+                            </button>
                         </subviews>
                         <color key="backgroundColor" white="0.0" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                         <constraints>
@@ -140,8 +147,10 @@
                             <constraint firstItem="3wd-9b-VP3" firstAttribute="centerY" secondItem="cIm-cY-H2h" secondAttribute="centerY" id="Bhw-7a-SeN"/>
                             <constraint firstItem="oCA-ZD-YVo" firstAttribute="centerX" secondItem="qv0-dL-bPw" secondAttribute="centerX" id="JUd-Cg-P6Y" userLabel="ButtonPhoto.centerX = Safe Area.centerX"/>
                             <constraint firstAttribute="bottom" secondItem="euJ-q6-YVn" secondAttribute="bottom" id="TlS-2v-mp3"/>
+                            <constraint firstItem="qv0-dL-bPw" firstAttribute="bottom" secondItem="djh-nT-3gT" secondAttribute="bottom" constant="10" id="dzI-Y7-jrl"/>
                             <constraint firstItem="euJ-q6-YVn" firstAttribute="leading" secondItem="qv0-dL-bPw" secondAttribute="leading" id="hPX-da-Ibk"/>
                             <constraint firstItem="qv0-dL-bPw" firstAttribute="trailing" secondItem="euJ-q6-YVn" secondAttribute="trailing" id="jJa-3U-2s3" userLabel="ImageViewFullScreen.trailing = Safe Area.trailing"/>
+                            <constraint firstItem="djh-nT-3gT" firstAttribute="centerX" secondItem="dNn-yk-rCO" secondAttribute="centerX" id="oe8-y5-Kcj"/>
                             <constraint firstItem="qv0-dL-bPw" firstAttribute="bottom" secondItem="oCA-ZD-YVo" secondAttribute="bottom" constant="60" id="pkh-w3-Nj2"/>
                             <constraint firstItem="cIm-cY-H2h" firstAttribute="leading" secondItem="qv0-dL-bPw" secondAttribute="leading" constant="20" id="svV-JA-ArV"/>
                             <constraint firstItem="qv0-dL-bPw" firstAttribute="trailing" secondItem="3wd-9b-VP3" secondAttribute="trailing" constant="20" id="xKA-fv-HAR"/>

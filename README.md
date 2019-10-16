@@ -58,6 +58,8 @@ be highlighting regions which are especially low in UV.
 
 # Version History
 
+- 2019-10-16 2.0.3
+    - added "load" button to support offline / nighttime testing
 - 2019-10-16 2.0.2
     - chunked processing into tasks to reduce per-thread memory footprint
 - 2019-10-15 2.0.1
