@@ -37,6 +37,13 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
     
     let captionPhotos = true
     
+    var unfiltered : UIImage?
+    var filtered : UIImage?
+    var Sf : UIImage?
+    var Sgr : UIImage?
+    var Sb : UIImage?
+    var final : UIImage?
+    
     // -------------------------------------------------------------------------
     // ViewController delegate
     // -------------------------------------------------------------------------
@@ -213,7 +220,14 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         {
             // This is annoying...don't do it
             // showAlertWith(title: "Saved!", message: "Your image has been saved to your photos.")
-            print("Image saved to album")
+            
+            // This debug line can be interesting to see when save events actually
+            // fire / complete.  In 1.x of this program (all processing in one
+            // callback), the "saved" completions all fired at once (probably
+            // sequentially?) the very end of processing.  In version 2.x when
+            // we switched to serial tasks, they're a bit more real-time.
+            //
+            // print("Image saved to album")
         }
     }
 
@@ -388,7 +402,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
             return
         }
         
-        print("Saving \(label)...")
+        print("Saving \(label)")
         
         // https://stackoverflow.com/a/40858152
         UIImageWriteToSavedPhotosAlbum(captionPhotos ? image.caption(text:label) : image, self, #selector(image(_:didFinishSavingWithError:contextInfo:)), nil)
@@ -398,19 +412,27 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
     // Image Processing
     // -------------------------------------------------------------------------
 
-    // Some of the weird autoreleasepool stuff in this, as well as the back-and-forth
-    // between 'guard let foo...else' and 'var foo = ... if nil' is because I'm
-    // getting "Message from debugger: Terminated due to memory issue".  Trying
-    // to release memory quicker (though I don't know if any of this helps much).
-    // The problem goes away when I don't save quite so many partial images, so
-    // adding the debugA/B/C flags helps too.
+    // This method is responsible for munging the two images into one processed
+    // UV absorbance-enhanced photograph.
     //
-    // Assuming LPF is on NFOV, where:
-    //   W = WFOV (Unfiltered)
-    //   N = NFOV (Filtered)
+    // It's broken into daisy-chained asynchronous calls because there seems to
+    // be a limit on how much memory a single thread can consume, and when I
+    // run the processing pipeline with full debugging enabled (saving an image
+    // from every step in the processing chain), I get the error:
+    //
+    //      "Message from debugger: Terminated due to memory issue"
+    //
+    // I'm currently caching processing artifacts in the self object to easily
+    // pass them between tasks; there's probably a cleaner way, but this works.
+    //
+    // This algorithm assumes the Long-Pass Filter (presumably around 410nm) is
+    // on the NFOV camera, i.e.:
+    //   WFOV = Unfiltered
+    //   NFOV = Filtered
     func performProcessing()
     {
         let name = "performProcessing"
+        print("starting processing")
 
         // ---------------------------------------------------------------------
         // Pre-process the two images to align them in size and contents so they
@@ -429,14 +451,14 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
             return
         }
         
-        let unfiltered = generateUnfiltered()
+        generateUnfiltered()
         if unfiltered == nil
         {
             print("\(name): failed to generate unfiltered")
             return
         }
 
-        var filtered = generateFiltered()
+        generateFiltered()
         if filtered == nil
         {
             print("\(name): failed to generate filtered")
@@ -474,134 +496,160 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         // Then if we tint Suv and blend it atop the original unfiltered image,
         // we should be highlighting regions which are especially low in UV.
         
-        var Sf = generateShadowsInFiltered(filtered: filtered!, debugging: state!.debugA)
-        if Sf == nil
+        // @see https://www.raywenderlich.com/5370-grand-central-dispatch-tutorial-for-swift-4-part-1-2
+        DispatchQueue.global(qos: .userInitiated).async
         {
-            print("\(name): failed generateShadowsInFiltered")
-            return
-        }
-        filtered = nil
-        save(Sf!, "Sf (shadows in filtered)")
-        
-        var Sgr = generateShadowsInGreenRed(unfiltered: unfiltered!, debugging: state!.debugB)
-        if Sgr == nil
-        {
-            print("\(name): failed generateShadowsInGreenRed")
-            return
-        }
-        save(Sgr!, "Sgr (shadows in green/red)")
-        
-        var SbP: UIImage? = nil
-        autoreleasepool {
-            guard let Sb = self.generateShadowsInBlue(unfiltered: unfiltered!, debugging: state!.debugC) else
+            [weak self] in
+            guard let self = self else { return }
+
+            print("starting queued event A")
+
+            self.generateShadowsInFiltered()
+            if self.Sf == nil
             {
-                print("\(name): failed generateShadowsInBlue")
+                print("\(name): failed generateShadowsInFiltered")
                 return
             }
-            // unfiltered = nil // still needed
-            self.save(Sb, "Sb (shadows in blue)")
             
-            SbP = self.generateShadowsInBlueAboveFilter(shadowsFiltered: Sf!, shadowsInBlue: Sb)
-            if SbP == nil
-            {
-                print("\(name): failed generateShadowsInBlueAboveFilter")
-                return
-            }
-            // Sf = nil // still needed
-            // Sb = nil // autorelease
-            self.save(SbP!, "Sb' (shadows in blue above filter)")
-        }
-        
-        var Suv: UIImage? = nil
-        autoreleasepool {
-            guard let Svis = generateShadowsInVIS(shadowsInGreenRed: Sgr!, shadowsInBlueAboveFilter: SbP!) else
-            {
-                print("\(name): failed generateShadowsInVIS")
-                return
-            }
-            Sgr = nil
-            SbP = nil
-            save(Svis, "Svis (shadows in VIS)")
+            self.filtered = nil // no longer needed
             
-            Suv = generateShadowsInUV(shadowsInFiltered: Sf!, shadowsInVIS: Svis)
-            if Suv == nil
-            {
-                print("\(name): failed generateShadowsInUV")
-                return
+            DispatchQueue.global(qos: .userInitiated).async {
+                [weak self] in
+                guard let self = self else { return }
+   
+                print("starting queued event B")
+                
+                self.generateShadowsInGreenRed()
+                if self.Sgr == nil
+                {
+                    print("\(name): failed generateShadowsInGreenRed")
+                    return
+                }
+                
+                DispatchQueue.global(qos: .userInitiated).async {
+                    [weak self] in
+                    guard let self = self else { return }
+
+                    print("starting queued event C")
+                    
+                    self.generateShadowsInBlue()
+                    if self.Sb == nil
+                    {
+                        print("\(name): failed generateShadowsInBlue")
+                        return
+                    }
+
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        [weak self] in
+                        guard let self = self else { return }
+
+                        print("starting queued event D")
+                        
+                        // This should be small enough to do in a single thread
+                        var SbP = self.generateShadowsInBlueAboveFilter()
+                        if SbP == nil
+                        {
+                            print("\(name): failed generateShadowsInBlueAboveFilter")
+                            return
+                        }
+                        
+                        self.Sb = nil // no longer needed
+                        
+                        guard let Svis = self.generateShadowsInVIS(shadowsInBlueAboveFilter: SbP!) else
+                        {
+                            print("\(name): failed generateShadowsInVIS")
+                            return
+                        }
+                        
+                        self.Sgr = nil // no longer needed
+                        SbP = nil // no longer needed
+                        
+                        self.save(Svis, "Svis (shadows in VIS)")
+                        
+                        var Suv = self.generateShadowsInUV(shadowsInVIS: Svis)
+                        if Suv == nil
+                        {
+                            print("\(name): failed generateShadowsInUV")
+                            return
+                        }
+                        
+                        self.Sf = nil // no longer needed
+                        
+                        let tintColor = CIColor(red: 1.0, green: 0.0, blue: 0.0)
+                        let SuvT = Suv!.tint(tintColor)
+                        if SuvT == nil
+                        {
+                            print("\(name): failed tint")
+                            return
+                        }
+                        
+                        Suv = nil // no longer needed
+                        self.save(SuvT!, "SuvT (tinted UV shadows)")
+                        
+                        self.final = self.unfiltered!.blend(SuvT!)
+                        if self.final == nil
+                        {
+                            print("\(name): failed final blend")
+                            return
+                        }
+                        
+                        self.unfiltered = nil // no longer needed
+                        self.save(self.final!, "final (tinted UV over unfiltered)")
+                        
+                        // final dispatch is to GUI thread so we can update widget
+                        DispatchQueue.main.async
+                        {
+                            [weak self] in
+                            guard let self = self else { return }
+                            
+                            print("starting queued event E")
+                            
+                            self.imageViewProcessed.image = self.final!
+                            self.final = nil // no longer needed
+                        }
+                    }
+                }
             }
-            Sf = nil
-            save(Suv!, "Suv (shadows in UV)")
-        }
-        
-        var SuvT: UIImage? = nil
-        autoreleasepool {
-            let tintColor = CIColor(red: 1.0, green: 0.0, blue: 0.0)
-            SuvT = Suv!.tint(tintColor)
-            if SuvT == nil
-            {
-                print("\(name): failed tint")
-                return
-            }
-            Suv = nil
-            save(SuvT!, "SuvT (tinted UV shadows)")
-        }
-        
-        autoreleasepool {
-            let final = unfiltered!.blend(SuvT!)
-            if final == nil
-            {
-                print("\(name): failed final blend")
-                return
-            }
-            save(final!, "final (tinted UV over unfiltered)")
-            imageViewProcessed.image = final
         }
     }
     
-    func generateUnfiltered() -> UIImage?
+    func generateUnfiltered()
     {
         let name = "generateUnfiltered"
+        unfiltered = nil
         
         // This seems non-sensical, but it does something.  By default,
         // the cropped WFOV was coming out rotated 90º CCW (top = west).
         // When I explicitly rotated it 90º CW here, it came out (top =
         // east).  So now I explicitly rotate it 0º, and the cropped
         // version retains (top = north).
-        if let rotated = state!.imageWide!.rotate(radians: 0)
-        {
-            state!.imageWide = nil
-            if let unfiltered = rotated.crop(percent: 0.5)
-            {
-                save(unfiltered, "unfiltered (cropped WFOV)")
-                return unfiltered
-            }
-            else
-            {
-                print("\(name) failed to crop WFOV")
-                return nil
-            }
-        }
-        else
+        let rotated = state!.imageWide!.rotate(radians: 0)
+        if rotated == nil
         {
             print("\(name): failed wide rotation")
-            return nil
+            return
         }
+
+        unfiltered = rotated!.crop(percent: 0.5)
+        if unfiltered == nil
+        {
+            print("\(name) failed to crop WFOV")
+            return
+        }
+
+        save(unfiltered!, "unfiltered (cropped WFOV)")
     }
     
-    func generateFiltered() -> UIImage?
+    func generateFiltered()
     {
         let name = "generateFiltered"
-        if let filtered = state!.imageNarrow!.resize(0.5)
-        {
-            state!.imageNarrow = nil
-            save(filtered, "filtered (resized NFOV)")
-            return filtered
-        }
-        else
+        filtered = state!.imageNarrow!.resize(0.5)
+        if filtered == nil
         {
             print("\(name) failed to resize NFOV (filtered)")
-            return nil
+            return
         }
+        save(filtered!, "filtered (resized NFOV)")
     }
     
     // @brief generate shadows in filtered camera (380, 410nm)
@@ -609,17 +657,20 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
     // Process: copy filtered orig; drop green, red channels; grayscale; invert; increase contrast
     //
     // @return white for shadows in (380, 410); black for light in (380, 410)
-    func generateShadowsInFiltered(filtered: UIImage, debugging: Bool) -> UIImage?
+    func generateShadowsInFiltered()
     {
+        let debugging = true
+        
         var tmp : UIImage? = nil
         let name = "generateShadowsInFiltered"
+        Sf = nil
 
         // copy filtered orig
-        tmp = filtered.copy()
+        tmp = filtered!.copy()
         if tmp == nil
         {
             print("\(name): failed copy")
-            return nil
+            return
         }
         
         // drop green, red channels
@@ -627,7 +678,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         if tmp == nil
         {
             print("\(name): failed justBlue")
-            return nil
+            return
         }
         save(tmp!, "\(name): justBlue", debugging: debugging)
         
@@ -636,7 +687,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         if tmp == nil
         {
             print("\(name): failed mono")
-            return nil
+            return
         }
         save(tmp!, "\(name): mono", debugging: debugging)
         
@@ -644,7 +695,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         if tmp == nil
         {
             print("\(name): failed normalize")
-            return nil
+            return
         }
         save(tmp!, "\(name): normalized", debugging: debugging)
 
@@ -653,7 +704,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         if tmp == nil
         {
             print("\(name): failed invert")
-            return nil
+            return
         }
         save(tmp!, "\(name): inverted", debugging: debugging)
 
@@ -662,11 +713,13 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         if tmp == nil
         {
             print("\(name): failed contrast")
+            return
         }
         save(tmp!, "\(name): contrast", debugging: debugging)
 
         // will show white for shadows in (380, 410); black for light in (380, 410)
-        return tmp
+        Sf = tmp
+        save(self.Sf!, "Sf (shadows in filtered)")
     }
     
     // @brief generate shadows in unfiltered green/red region (500, 740nm)
@@ -674,17 +727,20 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
     // process: copy unfiltered orig; drop blue channel; grayscale; invert; increase contrast
     //
     // @returns white for shadows in (500, 740); black for light in (500, 740)
-    func generateShadowsInGreenRed(unfiltered: UIImage, debugging: Bool) -> UIImage?
+    func generateShadowsInGreenRed()
     {
+        Sgr = nil
+        
         var tmp: UIImage? = nil
         let name = "generateShadowsInGreenRed"
+        let debugging = true
         
         // copy unfiltered orig
-        tmp = unfiltered.copy()
+        tmp = unfiltered!.copy()
         if tmp == nil
         {
             print("\(name): failed copy")
-            return nil
+            return
         }
         
         // drop blue
@@ -692,7 +748,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         if tmp == nil
         {
             print("\(name): failed dropBlue")
-            return nil
+            return
         }
         save(tmp!, "\(name): dropBlue", debugging: debugging)
 
@@ -701,7 +757,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         if tmp == nil
         {
             print("\(name): failed mono")
-            return nil
+            return
         }
         save(tmp!, "\(name): mono", debugging: debugging)
 
@@ -709,7 +765,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         if tmp == nil
         {
             print("\(name): failed normalize")
-            return nil
+            return
         }
         save(tmp!, "\(name): normalized", debugging: debugging)
 
@@ -718,7 +774,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         if tmp == nil
         {
             print("\(name): failed invert")
-            return nil
+            return
         }
         save(tmp!, "\(name): invert", debugging: debugging)
 
@@ -727,11 +783,13 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         if tmp == nil
         {
             print("\(name): failed contrast")
+            return
         }
         save(tmp!, "\(name): contrast", debugging: debugging)
 
         // return white for shadows in (500, 740); black for light in (500, 740)
-        return tmp
+        Sgr = tmp
+        save(Sgr!, "Sgr (Shadows in Green and Red)")
     }
 
     // @brief Generate shadows in blue region (380, 500nm)
@@ -739,17 +797,19 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
     // process: copy unfiltered orig; drop green, red channels; grayscale; invert; increase contrast
     //
     // @returns white for shadows in (380, 500); black for light in (380, 500)
-    func generateShadowsInBlue(unfiltered: UIImage, debugging: Bool) -> UIImage?
+    func generateShadowsInBlue()
     {
+        Sb = nil
         var tmp: UIImage? = nil
         let name = "generateShadowsInBlue"
+        let debugging = true
 
         // copy unfiltered orig
-        tmp = unfiltered.copy()
+        tmp = unfiltered!.copy()
         if tmp == nil
         {
             print("\(name): failed copy")
-            return nil
+            return
         }
         
         // drop green, red channels
@@ -757,7 +817,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         if tmp == nil
         {
             print("\(name): failed justBlue")
-            return nil
+            return
         }
         save(tmp!, "\(name): justBlue", debugging: debugging)
 
@@ -766,7 +826,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         if tmp == nil
         {
             print("\(name): failed mono")
-            return nil
+            return
         }
         save(tmp!, "\(name): mono", debugging: debugging)
 
@@ -774,7 +834,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         if tmp == nil
         {
             print("\(name): failed normalize")
-            return nil
+            return
         }
         save(tmp!, "\(name): normalized", debugging: debugging)
         
@@ -783,7 +843,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         if tmp == nil
         {
             print("\(name): failed invert")
-            return nil
+            return
         }
         save(tmp!, "\(name): invert", debugging: debugging)
 
@@ -792,33 +852,51 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate
         if tmp == nil
         {
             print("\(name): failed contrast")
+            return
         }
+        
         save(tmp!, "\(name): contrast", debugging: debugging)
 
-        // return white for shadows in (380, 500); black for light in (380, 500)
-        return tmp
+        // white for shadows in (380, 500); black for light in (380, 500)
+        Sb = tmp
+        save(Sb!, "Sb (Shadows in Blue, 380-500)")
     }
 
     // compute Sb’ (Sf - Sb)
     //
     // @returns white for shadows in (410, 500); black for light in (410, 500)
-    func generateShadowsInBlueAboveFilter(shadowsFiltered: UIImage, shadowsInBlue: UIImage) -> UIImage?
+    func generateShadowsInBlueAboveFilter() -> UIImage?
     {
         // is this the right kind of subtraction?
-        return shadowsInBlue.diff(shadowsFiltered)
+        if let tmp = Sb!.diff(Sf!)
+        {
+            self.save(tmp, "Sb' (shadows in blue above filter, 410-500)")
+            return tmp
+        }
+        return nil
     }
 
     // @brief compute Svis = Sgr + Sb’
     // @returns white for shadows in (410, 740); black for light in (410, 740)
-    func generateShadowsInVIS(shadowsInGreenRed: UIImage, shadowsInBlueAboveFilter: UIImage) -> UIImage?
+    func generateShadowsInVIS(shadowsInBlueAboveFilter: UIImage) -> UIImage?
     {
-        return shadowsInGreenRed.blend(shadowsInBlueAboveFilter)
+        if let tmp = Sgr!.blend(shadowsInBlueAboveFilter)
+        {
+            self.save(tmp, "Svis (shadows in VIS, 410-740)")
+            return tmp
+        }
+        return nil
     }
     
     // compute Suv = Sf - Svis (white for shadows exclusively in (380, 410)
-    func generateShadowsInUV(shadowsInFiltered: UIImage, shadowsInVIS: UIImage) -> UIImage?
+    func generateShadowsInUV(shadowsInVIS: UIImage) -> UIImage?
     {
-        return shadowsInFiltered.diff(shadowsInVIS)
+        if let tmp = Sf!.diff(shadowsInVIS)
+        {
+            self.save(tmp, "Suv (Shadows in UV, 380-410)")
+            return tmp
+        }
+        return nil
     }
     
 }

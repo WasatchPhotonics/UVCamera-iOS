@@ -40,15 +40,7 @@ class ViewController: UIViewController {
             vc.state = state
         }
     }
-    @IBAction func debugACallback(_ sender: Any) {
-        state?.debugA = switchValue(sender)
-    }
-    @IBAction func debugBCallback(_ sender: Any) {
-        state?.debugB = switchValue(sender)
-    }
-    @IBAction func debugCCallback(_ sender: Any) {
-        state?.debugC = switchValue(sender)
-    }
+
     @IBAction func saveComponentsCallback(_ sender: Any) {
         state?.saveComponents = switchValue(sender)
     }
