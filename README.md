@@ -58,6 +58,9 @@ be highlighting regions which are especially low in UV.
 
 # Version History
 
+- 2019-10-23 2.0.4
+    - added adjustExposure
+    - fixed DropBlueFilter
 - 2019-10-16 2.0.3
     - added "load" button to support offline / nighttime testing
 - 2019-10-16 2.0.2

@@ -63,11 +63,11 @@
 				6DD4AA0B22B287D200685F4D /* Main.storyboard */,
 				6D7B53C2223FD34600610DB0 /* AppDelegate.swift */,
 				6D7B53C9223FD34A00610DB0 /* Assets.xcassets */,
-				6D7B53D4223FD87A00610DB0 /* CameraViewController.swift */,
 				6D7B53CE223FD34A00610DB0 /* Info.plist */,
 				6D7B53CB223FD34A00610DB0 /* LaunchScreen.storyboard */,
 				6D7B53D8223FDFEB00610DB0 /* State.swift */,
 				6D7B53C4223FD34600610DB0 /* ViewController.swift */,
+				6D7B53D4223FD87A00610DB0 /* CameraViewController.swift */,
 				6D96F99922B180AD003CE3C0 /* Util.swift */,
 			);
 			path = UVCamera;

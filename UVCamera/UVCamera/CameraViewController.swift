@@ -240,6 +240,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
     // UIImagePickerControllerDelegate
     // -------------------------------------------------------------------------
 
+    // @see https://stackoverflow.com/a/51172065/11615696
     @objc(imagePickerController:didFinishPickingMediaWithInfo:) func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any])
     {
         print("imagePickerController.didFinishPickingImage")
@@ -283,9 +284,6 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
     
     @IBAction func swapClicked(_ sender: UIButton)
     {
-        // swap (x, y) and Size of cameraPreviewLayer and imageViewProcessed
-        // set view.layer.zPosition = 1 // higher values on top, negatives okay
-        
         deleteCameraPreview()
         if previewFullScreen
         {
@@ -297,6 +295,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         }
     }
     
+    // @see https://stackoverflow.com/a/25514262/11615696
     @IBAction func loadClicked(_ sender: UIButton)
     {
         state!.imageNarrow = nil
@@ -486,6 +485,36 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
     // on the NFOV camera, i.e.:
     //   WFOV = Unfiltered
     //   NFOV = Filtered
+    //
+    // @par Algorithm
+    //
+    // if we’re specifically looking to find UV absorbance, and as an
+    // approximation we’re using shadows which are particularly or uniquely
+    // dark in the (380, 410nm) to represent that, then we should be able to
+    // bring those out using something like this:
+    //
+    // WHERE:
+    //
+    // \verbatim
+    //     Suv  = Shadows exclusively in the range (380, 410nm) (not appearing in Svis)
+    //     Svis = Shadows anywhere in VIS (410, 740nm)
+    //     Sf   = Shadows in filtered camera (380, 410nm)
+    //     Sgr  = Shadows in green, red region (500, 740nm)
+    //     Sb   = Shadows in blue region (380, 500nm)
+    //     Sb’  = Shadows in blue region, above filter (410, 500nm)
+    // \endverbatim
+    //
+    // PROCESS:
+    // - generate Sf: copy filtered orig; drop green, red channels; grayscale; invert; increase contrast (will show white for shadows in (380, 410); black for light in (380, 410))
+    // - generate Sgr: copy unfiltered orig; drop blue channel; grayscale; invert; increase contrast (white for shadows in (500, 740); black for light in (500, 740))
+    // - generate Sb: copy unfiltered orig; drop green, red channels; grayscale; invert; increase contrast (white for shadows in (380, 500); black for light in (380, 500))
+    // - compute Sb’: Sf - Sb (white for shadows in (410, 500); black for light in (410, 500))
+    // - compute Svis = Sgr + Sb’ (white for shadows in (410, 740); black for light in (410, 740))
+    // - compute Suv = Sf - Svis (white for shadows exclusively in (380, 410))
+    //
+    // Then if we tint Suv and blend it atop the original unfiltered image, we
+    // should be highlighting regions which are especially low in UV.
+
     func performProcessing(reprocessing: Bool = false)
     {
         let name = "performProcessing"
@@ -532,43 +561,16 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         }
 
         // ---------------------------------------------------------------------
-        // We now have mostly-identical wide (unfiltered) and
-        // narrow (filtered) images with the same pixel dimensions,
-        // framing and contents, just different sharpness (the
-        // WFOV/unfiltered is blurrier).
+        // At this point we have mostly-identical wide (unfiltered) and narrow
+        // (filtered) images with the same pixel dimensions, framing and
+        // contents, just different sharpness (the WFOV/unfiltered is blurrier).
         // ---------------------------------------------------------------------
-
-        // if we’re specifically looking to find UV absorbance, and as an
-        // approximation we’re using shadows which are particularly or uniquely
-        // dark in the (380, 410nm) to represent that, then we should be able to
-        // bring those out using something like this:
-        //
-        // WHERE:
-        //     Suv  = Shadows exclusively in the range (380, 410nm) (not appearing in Svis)
-        //     Svis = Shadows anywhere in VIS (410, 740nm)
-        //     Sf   = Shadows in filtered camera (380, 410nm)
-        //     Sgr  = Shadows in green, red region (500, 740nm)
-        //     Sb   = Shadows in blue region (380, 500nm)
-        //     Sb’  = Shadows in blue region, above filter (410, 500nm)
-        //
-        // PROCESS:
-        // generate Sf: copy filtered orig; drop green, red channels; grayscale; invert; increase contrast (will show white for shadows in (380, 410); black for light in (380, 410))
-        // generate Sgr: copy unfiltered orig; drop blue channel; grayscale; invert; increase contrast (white for shadows in (500, 740); black for light in (500, 740))
-        // generate Sb: copy unfiltered orig; drop green, red channels; grayscale; invert; increase contrast (white for shadows in (380, 500); black for light in (380, 500))
-        // compute Sb’: Sf - Sb (white for shadows in (410, 500); black for light in (410, 500))
-        // compute Svis = Sgr + Sb’ (white for shadows in (410, 740); black for light in (410, 740))
-        // compute Suv = Sf - Svis (white for shadows exclusively in (380, 410))
-        //
-        // Then if we tint Suv and blend it atop the original unfiltered image,
-        // we should be highlighting regions which are especially low in UV.
         
         // @see https://www.raywenderlich.com/5370-grand-central-dispatch-tutorial-for-swift-4-part-1-2
         DispatchQueue.global(qos: .userInitiated).async
         {
             [weak self] in
             guard let self = self else { return }
-
-            print("starting queued event A")
 
             self.generateShadowsInFiltered()
             if self.Sf == nil
@@ -583,8 +585,6 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
                 [weak self] in
                 guard let self = self else { return }
    
-                print("starting queued event B")
-                
                 self.generateShadowsInGreenRed()
                 if self.Sgr == nil
                 {
@@ -596,8 +596,6 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
                     [weak self] in
                     guard let self = self else { return }
 
-                    print("starting queued event C")
-                    
                     self.generateShadowsInBlue()
                     if self.Sb == nil
                     {
@@ -609,9 +607,10 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
                         [weak self] in
                         guard let self = self else { return }
 
-                        print("starting queued event D")
-                        
+                        // -----------------------------------------------------
                         // This should be small enough to do in a single thread
+                        // -----------------------------------------------------
+
                         var SbP = self.generateShadowsInBlueAboveFilter()
                         if SbP == nil
                         {
@@ -660,15 +659,13 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
                         }
                         
                         self.unfiltered = nil // no longer needed
-                        self.save(self.final!, "final (tinted UV over unfiltered)")
+                        self.save(self.final!, "final (tinted UV over unfiltered)", force: true)
                         
                         // final dispatch is to GUI thread so we can update widget
                         DispatchQueue.main.async
                         {
                             [weak self] in
                             guard let self = self else { return }
-                            
-                            print("starting queued event E")
                             
                             self.imageViewProcessed.image = self.final!
                             self.final = nil // no longer needed
@@ -703,7 +700,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
             return
         }
 
-        save(unfiltered!, "unfiltered (cropped WFOV)")
+        save(unfiltered!, "unfiltered (cropped WFOV)", force: true)
     }
     
     func generateFiltered()
@@ -715,7 +712,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
             print("\(name) failed to resize NFOV (filtered)")
             return
         }
-        save(filtered!, "filtered (resized NFOV)")
+        save(filtered!, "filtered (resized NFOV)", force: true)
     }
     
     // @brief generate shadows in filtered camera (380, 410nm)
@@ -748,22 +745,33 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         }
         save(tmp!, "\(name): justBlue", debugging: debugging)
         
-        // grayscale
-        tmp = tmp!.mono()
-        if tmp == nil
+        if true
         {
-            print("\(name): failed mono")
-            return
+            // grayscale
+            tmp = tmp!.mono()
+            if tmp == nil
+            {
+                print("\(name): failed mono")
+                return
+            }
+            save(tmp!, "\(name): mono", debugging: debugging)
         }
-        save(tmp!, "\(name): mono", debugging: debugging)
         
-        tmp = tmp!.normalize3()
+        tmp = tmp!.normalize3() // normalize_slow()
         if tmp == nil
         {
             print("\(name): failed normalize")
             return
         }
         save(tmp!, "\(name): normalized", debugging: debugging)
+        
+        tmp = tmp!.adjustExposure(5.0)
+        if tmp == nil
+        {
+            print("\(name): failed exposure")
+            return
+        }
+        save(tmp!, "\(name): exposure", debugging: debugging)
 
         // invert
         tmp = tmp!.invert()
@@ -835,6 +843,14 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         }
         save(tmp!, "\(name): normalized", debugging: debugging)
 
+        tmp = tmp!.adjustExposure(5.0)
+        if tmp == nil
+        {
+            print("\(name): failed exposure")
+            return
+        }
+        save(tmp!, "\(name): exposure", debugging: debugging)
+
         // invert
         tmp = tmp!.invert()
         if tmp == nil
@@ -904,6 +920,14 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         }
         save(tmp!, "\(name): normalized", debugging: debugging)
         
+        tmp = tmp!.adjustExposure(5.0)
+        if tmp == nil
+        {
+            print("\(name): failed exposure")
+            return
+        }
+        save(tmp!, "\(name): exposure", debugging: debugging)
+
         // invert
         tmp = tmp!.invert()
         if tmp == nil
