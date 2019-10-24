@@ -103,7 +103,7 @@ extension UIImage
         return UIImage(cgImage: img)
     }
     
-    func blend(_ img: UIImage) -> UIImage?
+    func blend(_ img: UIImage, alpha: Float = 0.5, blendMode: CGBlendMode = CGBlendMode.normal) -> UIImage?
     {
         let size = self.size
         UIGraphicsBeginImageContext(size)
@@ -111,7 +111,7 @@ extension UIImage
         let areaSize = CGRect(x: 0, y: 0, width: size.width, height: size.height)
         self.draw(in: areaSize)
         
-        img.draw(in: areaSize, blendMode: .normal, alpha: 0.5)
+        img.draw(in: areaSize, blendMode: blendMode, alpha: CGFloat(alpha))
         
         let blended = UIGraphicsGetImageFromCurrentImageContext()!
         UIGraphicsEndImageContext()

@@ -58,51 +58,59 @@ be highlighting regions which are especially low in UV.
 
 # Version History
 
-- 2019-10-23 2.0.4
-    - added adjustExposure
-    - fixed DropBlueFilter
-- 2019-10-16 2.0.3
-    - added "load" button to support offline / nighttime testing
-- 2019-10-16 2.0.2
-    - chunked processing into tasks to reduce per-thread memory footprint
-- 2019-10-15 2.0.1
-    - fighting memory issues (too many debug saves)
-    - kinda sorta seems to work?
-- 2019-10-15 2.0.0
-    - redesigned image processing pipeline for UV absorbance
-    - added UIImage.copy, .dropBlue, .caption
-    - runs, not spectrally evaluated
-- 2019-08-23
-    - migrated to GitHub
-    - docs
-- 2019-08-22 1.3.0
-    - added normalize3()
-    - added BlueFilter
-    - successful testing with SPF-100 samples
-- 2019-08-22 1.2.4
-    - moved default preview session from NFOV to WFOV
-    - added adjustContrast()
-    - migrating to non-subtractive (filtered) UV acquisition
-- 2019-08-21 1.2.3
-    - moved UV filter from WFOV to NFOV
-    - added UIImage.invert()
-- 2019-07-22 1.2.2
-    - added Launch Screen, online help
-    - submitted for TestFlight (approved)
-- 2019-07-19 1.1.3
-    - resolved most constraint warnings
-    - fixed screens for 6.5", 5.5"
-    - better handling of non-dual-camera iPhones
-    - first App Store submission (rejected)
-- 2019-07-03 0.0.5
-    - 3.5x speedup (removed manual pixel math)
-- 2019-07-02 0.0.4
-    - basic image-processing in place
-- 2019-06-11 0.0.3
-    - convert to mono
-    - crop f/1.8 image to 50%
-    - subtract images
-- 2019-03-19 0.0.2
-    - able to screenshot previews from both cameras
-- 2019-03-19 0.0.1
-    - stubbing views
+- 2.x (UV Absorbance)
+
+    - 2019-10-24 2.0.5
+        - added adjustGamma
+        - processing tweaks
+    - 2019-10-23 2.0.4
+        - added adjustExposure
+        - fixed DropBlueFilter
+    - 2019-10-16 2.0.3
+        - added "load" button to support offline / nighttime testing
+    - 2019-10-16 2.0.2
+        - chunked processing into tasks to reduce per-thread memory footprint
+    - 2019-10-15 2.0.1
+        - fighting memory issues (too many debug saves)
+        - kinda sorta seems to work?
+    - 2019-10-15 2.0.0
+        - redesigned image processing pipeline for UV absorbance
+        - added UIImage.copy, .dropBlue, .caption
+        - runs, not spectrally evaluated
+
+- 1.x (UV Reflectance)
+
+    - 2019-08-23
+        - migrated to GitHub
+        - docs
+    - 2019-08-22 1.3.0
+        - added normalize3()
+        - added BlueFilter
+        - successful testing with SPF-100 samples
+    - 2019-08-22 1.2.4
+        - moved default preview session from NFOV to WFOV
+        - added adjustContrast()
+        - migrating to non-subtractive (filtered) UV acquisition
+    - 2019-08-21 1.2.3
+        - moved UV filter from WFOV to NFOV
+        - added UIImage.invert()
+    - 2019-07-22 1.2.2
+        - added Launch Screen, online help
+        - submitted for TestFlight (approved)
+    - 2019-07-19 1.1.3
+        - resolved most constraint warnings
+        - fixed screens for 6.5", 5.5"
+        - better handling of non-dual-camera iPhones
+        - first App Store submission (rejected)
+    - 2019-07-03 0.0.5
+        - 3.5x speedup (removed manual pixel math)
+    - 2019-07-02 0.0.4
+        - basic image-processing in place
+    - 2019-06-11 0.0.3
+        - convert to mono
+        - crop f/1.8 image to 50%
+        - subtract images
+    - 2019-03-19 0.0.2
+        - able to screenshot previews from both cameras
+    - 2019-03-19 0.0.1
+        - stubbing views

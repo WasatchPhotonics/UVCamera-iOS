@@ -706,6 +706,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
     func generateFiltered()
     {
         let name = "generateFiltered"
+        
         filtered = state!.imageNarrow!.resize(0.5)
         if filtered == nil
         {
@@ -725,7 +726,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         let debugging = true
         
         var tmp : UIImage? = nil
-        let name = "generateShadowsInFiltered"
+        let name = "generateShadowsInFiltered (380, 410)"
         Sf = nil
 
         // copy filtered orig
@@ -781,9 +782,17 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
             return
         }
         save(tmp!, "\(name): inverted", debugging: debugging)
+        
+        // darken gamma
+        tmp = tmp!.adjustGamma(preset: "E2")
+        if tmp == nil
+        {
+            print("\(name): failed darken gamma")
+        }
+        save(tmp!, "\(name): darken gamma", debugging: debugging)
 
         // contrast
-        tmp = tmp!.adjustContrast(1.5)
+        tmp = tmp!.adjustContrast(2)
         if tmp == nil
         {
             print("\(name): failed contrast")
@@ -793,7 +802,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
 
         // will show white for shadows in (380, 410); black for light in (380, 410)
         Sf = tmp
-        save(self.Sf!, "Sf (shadows in filtered)")
+        save(self.Sf!, "Sf (\(name))")
     }
     
     // @brief generate shadows in unfiltered green/red region (500, 740nm)
@@ -806,7 +815,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         Sgr = nil
         
         var tmp: UIImage? = nil
-        let name = "generateShadowsInGreenRed"
+        let name = "generateShadowsInGreenRed (500-740)"
         let debugging = true
         
         // copy unfiltered orig
@@ -843,13 +852,16 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         }
         save(tmp!, "\(name): normalized", debugging: debugging)
 
-        tmp = tmp!.adjustExposure(5.0)
-        if tmp == nil
+        if false
         {
-            print("\(name): failed exposure")
-            return
+            tmp = tmp!.adjustExposure(5.0)
+            if tmp == nil
+            {
+                print("\(name): failed exposure")
+                return
+            }
+            save(tmp!, "\(name): exposure", debugging: debugging)
         }
-        save(tmp!, "\(name): exposure", debugging: debugging)
 
         // invert
         tmp = tmp!.invert()
@@ -860,18 +872,21 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         }
         save(tmp!, "\(name): invert", debugging: debugging)
 
-        // contrast
-        tmp = tmp!.adjustContrast(1.5)
-        if tmp == nil
+        if false
         {
-            print("\(name): failed contrast")
-            return
+            // contrast
+            tmp = tmp!.adjustContrast(1.5)
+            if tmp == nil
+            {
+                print("\(name): failed contrast")
+                return
+            }
+            save(tmp!, "\(name): contrast", debugging: debugging)
         }
-        save(tmp!, "\(name): contrast", debugging: debugging)
 
         // return white for shadows in (500, 740); black for light in (500, 740)
         Sgr = tmp
-        save(Sgr!, "Sgr (Shadows in Green and Red)")
+        save(Sgr!, "Sgr (\(name))")
     }
 
     // @brief Generate shadows in blue region (380, 500nm)
@@ -883,7 +898,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
     {
         Sb = nil
         var tmp: UIImage? = nil
-        let name = "generateShadowsInBlue"
+        let name = "generateShadowsInBlue (380-500)"
         let debugging = true
 
         // copy unfiltered orig
@@ -920,14 +935,17 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         }
         save(tmp!, "\(name): normalized", debugging: debugging)
         
-        tmp = tmp!.adjustExposure(5.0)
-        if tmp == nil
+        if false
         {
-            print("\(name): failed exposure")
-            return
+            tmp = tmp!.adjustExposure(5.0)
+            if tmp == nil
+            {
+                print("\(name): failed exposure")
+                return
+            }
+            save(tmp!, "\(name): exposure", debugging: debugging)
         }
-        save(tmp!, "\(name): exposure", debugging: debugging)
-
+        
         // invert
         tmp = tmp!.invert()
         if tmp == nil
@@ -937,19 +955,21 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         }
         save(tmp!, "\(name): invert", debugging: debugging)
 
-        // contrast
-        tmp = tmp!.adjustContrast(1.5)
-        if tmp == nil
+        if false
         {
-            print("\(name): failed contrast")
-            return
+            // contrast
+            tmp = tmp!.adjustContrast(1.5)
+            if tmp == nil
+            {
+                print("\(name): failed contrast")
+                return
+            }
+            save(tmp!, "\(name): contrast", debugging: debugging)
         }
-        
-        save(tmp!, "\(name): contrast", debugging: debugging)
 
         // white for shadows in (380, 500); black for light in (380, 500)
         Sb = tmp
-        save(Sb!, "Sb (Shadows in Blue, 380-500)")
+        save(Sb!, "Sb (\(name))")
     }
 
     // compute Sb’ (Sf - Sb)
@@ -957,10 +977,12 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
     // @returns white for shadows in (410, 500); black for light in (410, 500)
     func generateShadowsInBlueAboveFilter() -> UIImage?
     {
+        let name = "Shadows in Blue Above Filter (410-500)"
+        
         // is this the right kind of subtraction?
         if let tmp = Sb!.diff(Sf!)
         {
-            self.save(tmp, "Sb' (shadows in blue above filter, 410-500)")
+            self.save(tmp, "Sb' (\(name))")
             return tmp
         }
         return nil
@@ -970,9 +992,11 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
     // @returns white for shadows in (410, 740); black for light in (410, 740)
     func generateShadowsInVIS(shadowsInBlueAboveFilter: UIImage) -> UIImage?
     {
-        if let tmp = Sgr!.blend(shadowsInBlueAboveFilter)
+        let name = "Shadows in VIS, 410-740"
+        
+        if let tmp = Sgr!.blend(shadowsInBlueAboveFilter, blendMode: CGBlendMode.screen)
         {
-            self.save(tmp, "Svis (shadows in VIS, 410-740)")
+            self.save(tmp, "Svis (\(name))")
             return tmp
         }
         return nil
@@ -981,9 +1005,11 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
     // compute Suv = Sf - Svis (white for shadows exclusively in (380, 410)
     func generateShadowsInUV(shadowsInVIS: UIImage) -> UIImage?
     {
+        let name = "Shadows in UV, 380-410"
+        
         if let tmp = Sf!.diff(shadowsInVIS)
         {
-            self.save(tmp, "Suv (Shadows in UV, 380-410)")
+            self.save(tmp, "Suv (\(name))")
             return tmp
         }
         return nil
