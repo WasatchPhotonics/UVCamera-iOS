@@ -1,5 +1,5 @@
 //
-//  Util.swift
+//  UIImageHelper.swift
 //  UVCamera
 //
 //  Created by Mark Zieg on 6/12/19.
@@ -59,12 +59,6 @@ class DropBlueFilter: CIFilter
         }
     }
     
-    // https://stackoverflow.com/a/42537079/11615696
-    //
-    // todo need to port this to Metal
-    // see https://medium.com/@shu223/core-image-filters-with-metal-71afd6377f4
-    // see https://developer.apple.com/metal/MetalCIKLReference6.pdf
-    // see https://developer.apple.com/documentation/coreimage/cikernel
     func createCustomKernel() -> CIColorKernel {
         let kernelString =
             "kernel vec4 chromaKey( __sample s) {" +
@@ -87,7 +81,7 @@ extension UIImage
         let ciImage = CoreImage.CIImage(cgImage: cgImage)
         let parameters = [ "inputContrast": NSNumber(value: factor) ]
         let outputImage = ciImage.applyingFilter("CIColorControls", parameters: parameters)
-        let context = CIContext(options: nil)
+        let context = CIContext()
         let img = context.createCGImage(outputImage, from: outputImage.extent)!
         return UIImage(cgImage: img)
     }
@@ -98,7 +92,7 @@ extension UIImage
         let ciImage = CoreImage.CIImage(cgImage: cgImage)
         let parameters = [ "inputEV": NSNumber(value: ev) ]
         let outputImage = ciImage.applyingFilter("CIExposureAdjust", parameters: parameters)
-        let context = CIContext(options: nil)
+        let context = CIContext()
         let img = context.createCGImage(outputImage, from: outputImage.extent)!
         return UIImage(cgImage: img)
     }
@@ -222,6 +216,18 @@ extension UIImage
             return UIImage(cgImage: cgimg)
         }
         return nil
+    }
+    
+    // not sure this contributes anything
+    func flatten() -> UIImage?
+    {
+        let format = UIGraphicsImageRendererFormat.init()
+        format.opaque = true //Removes Alpha Channel
+        format.scale = self.scale //Keeps original image scale.
+        let size = self.size
+        return UIGraphicsImageRenderer(size: size, format: format).image { _ in
+            self.draw(in: CGRect(origin: .zero, size: size))
+        }
     }
     
     func invert() -> UIImage?
@@ -442,7 +448,7 @@ extension UIImage
 
     // pass CIColor(red: 0.7, green: 0.7, blue: 0.7)
     // see https://www.hackingwithswift.com/example-code/media/how-to-desaturate-an-image-to-make-it-black-and-white
-    func tint(_ ciColor: CIColor, _ intensity: CGFloat = 1.0) -> UIImage?
+    func tint(_ ciColor: CIColor, intensity: CGFloat = 1.0) -> UIImage?
     {
         guard let currentCGImage = self.cgImage else { return nil }
         let currentCIImage = CIImage(cgImage: currentCGImage)

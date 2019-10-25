@@ -33,7 +33,8 @@ struct ResponseCurvePreset
 
 extension UIImage
 {
-    func adjustGamma(preset: String) -> UIImage?
+    // also see CIGammaAdjust, which just takes input power
+    func applyGammaPreset(preset: String) -> UIImage?
     {
         let name = "adjustGamma"
         

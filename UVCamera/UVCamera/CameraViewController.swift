@@ -451,9 +451,9 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         // when the requested photo is complete, it will be delivered via photoOutput(_:didFinishProcessingPhoto)
     }
     
-    func save(_ image: UIImage, _ label: String, force: Bool=false, debugging: Bool=true)
+    func save(_ image: UIImage, _ label: String, force: Bool=false)
     {
-        if !debugging || !(force || state!.saveComponents)
+        if !force && !state!.saveComponents
         {
             return
         }
@@ -629,8 +629,6 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
                         self.Sgr = nil // no longer needed
                         SbP = nil // no longer needed
                         
-                        self.save(Svis, "Svis (shadows in VIS)")
-                        
                         var Suv = self.generateShadowsInUV(shadowsInVIS: Svis)
                         if Suv == nil
                         {
@@ -641,7 +639,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
                         self.Sf = nil // no longer needed
                         
                         let tintColor = CIColor(red: 1.0, green: 0.0, blue: 0.0)
-                        let SuvT = Suv!.tint(tintColor)
+                        let SuvT = Suv!.tint(tintColor, intensity: 2)
                         if SuvT == nil
                         {
                             print("\(name): failed tint")
@@ -723,8 +721,6 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
     // @return white for shadows in (380, 410); black for light in (380, 410)
     func generateShadowsInFiltered()
     {
-        let debugging = true
-        
         var tmp : UIImage? = nil
         let name = "generateShadowsInFiltered (380, 410)"
         Sf = nil
@@ -744,7 +740,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
             print("\(name): failed justBlue")
             return
         }
-        save(tmp!, "\(name): justBlue", debugging: debugging)
+        save(tmp!, "\(name): justBlue")
         
         if true
         {
@@ -755,7 +751,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
                 print("\(name): failed mono")
                 return
             }
-            save(tmp!, "\(name): mono", debugging: debugging)
+            save(tmp!, "\(name): mono")
         }
         
         tmp = tmp!.normalize3() // normalize_slow()
@@ -764,7 +760,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
             print("\(name): failed normalize")
             return
         }
-        save(tmp!, "\(name): normalized", debugging: debugging)
+        save(tmp!, "\(name): normalized")
         
         tmp = tmp!.adjustExposure(5.0)
         if tmp == nil
@@ -772,7 +768,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
             print("\(name): failed exposure")
             return
         }
-        save(tmp!, "\(name): exposure", debugging: debugging)
+        save(tmp!, "\(name): exposure")
 
         // invert
         tmp = tmp!.invert()
@@ -781,15 +777,15 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
             print("\(name): failed invert")
             return
         }
-        save(tmp!, "\(name): inverted", debugging: debugging)
+        save(tmp!, "\(name): inverted")
         
         // darken gamma
-        tmp = tmp!.adjustGamma(preset: "E2")
+        tmp = tmp!.applyGammaPreset(preset: "E2")
         if tmp == nil
         {
             print("\(name): failed darken gamma")
         }
-        save(tmp!, "\(name): darken gamma", debugging: debugging)
+        save(tmp!, "\(name): darken gamma")
 
         // contrast
         tmp = tmp!.adjustContrast(2)
@@ -798,7 +794,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
             print("\(name): failed contrast")
             return
         }
-        save(tmp!, "\(name): contrast", debugging: debugging)
+        save(tmp!, "\(name): contrast")
 
         // will show white for shadows in (380, 410); black for light in (380, 410)
         Sf = tmp
@@ -816,7 +812,6 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         
         var tmp: UIImage? = nil
         let name = "generateShadowsInGreenRed (500-740)"
-        let debugging = true
         
         // copy unfiltered orig
         tmp = unfiltered!.copy()
@@ -833,7 +828,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
             print("\(name): failed dropBlue")
             return
         }
-        save(tmp!, "\(name): dropBlue", debugging: debugging)
+        save(tmp!, "\(name): dropBlue")
 
         // grayscale
         tmp = tmp!.mono()
@@ -842,7 +837,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
             print("\(name): failed mono")
             return
         }
-        save(tmp!, "\(name): mono", debugging: debugging)
+        save(tmp!, "\(name): mono")
 
         tmp = tmp!.normalize3()
         if tmp == nil
@@ -850,7 +845,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
             print("\(name): failed normalize")
             return
         }
-        save(tmp!, "\(name): normalized", debugging: debugging)
+        save(tmp!, "\(name): normalized")
 
         if false
         {
@@ -860,7 +855,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
                 print("\(name): failed exposure")
                 return
             }
-            save(tmp!, "\(name): exposure", debugging: debugging)
+            save(tmp!, "\(name): exposure")
         }
 
         // invert
@@ -870,7 +865,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
             print("\(name): failed invert")
             return
         }
-        save(tmp!, "\(name): invert", debugging: debugging)
+        save(tmp!, "\(name): invert")
 
         if false
         {
@@ -881,7 +876,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
                 print("\(name): failed contrast")
                 return
             }
-            save(tmp!, "\(name): contrast", debugging: debugging)
+            save(tmp!, "\(name): contrast")
         }
 
         // return white for shadows in (500, 740); black for light in (500, 740)
@@ -899,7 +894,6 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         Sb = nil
         var tmp: UIImage? = nil
         let name = "generateShadowsInBlue (380-500)"
-        let debugging = true
 
         // copy unfiltered orig
         tmp = unfiltered!.copy()
@@ -916,7 +910,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
             print("\(name): failed justBlue")
             return
         }
-        save(tmp!, "\(name): justBlue", debugging: debugging)
+        save(tmp!, "\(name): justBlue")
 
         // grayscale
         tmp = tmp!.mono()
@@ -925,7 +919,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
             print("\(name): failed mono")
             return
         }
-        save(tmp!, "\(name): mono", debugging: debugging)
+        save(tmp!, "\(name): mono")
 
         tmp = tmp!.normalize3()
         if tmp == nil
@@ -933,7 +927,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
             print("\(name): failed normalize")
             return
         }
-        save(tmp!, "\(name): normalized", debugging: debugging)
+        save(tmp!, "\(name): normalized")
         
         if false
         {
@@ -943,7 +937,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
                 print("\(name): failed exposure")
                 return
             }
-            save(tmp!, "\(name): exposure", debugging: debugging)
+            save(tmp!, "\(name): exposure")
         }
         
         // invert
@@ -953,7 +947,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
             print("\(name): failed invert")
             return
         }
-        save(tmp!, "\(name): invert", debugging: debugging)
+        save(tmp!, "\(name): invert")
 
         if false
         {
@@ -964,7 +958,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
                 print("\(name): failed contrast")
                 return
             }
-            save(tmp!, "\(name): contrast", debugging: debugging)
+            save(tmp!, "\(name): contrast")
         }
 
         // white for shadows in (380, 500); black for light in (380, 500)
@@ -1007,12 +1001,42 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
     {
         let name = "Shadows in UV, 380-410"
         
-        if let tmp = Sf!.diff(shadowsInVIS)
+        var tmp = Sf!.diff(shadowsInVIS)
+        if tmp == nil
         {
-            self.save(tmp, "Suv (\(name))")
-            return tmp
+            print("\(name): failed diff")
+            return nil
         }
-        return nil
+        self.save(tmp!, "\(name): diff")
+        
+        tmp = tmp!.flatten()
+        if tmp == nil
+        {
+            print("\(name): failed flatten")
+            return nil
+        }
+        self.save(tmp!, "\(name): flatten")
+
+        tmp = tmp!.applyGammaPreset(preset: "L3")
+        if tmp == nil
+        {
+            print("\(name): failed gamma contrast")
+            return nil
+        }
+        self.save(tmp!, "\(name): gamma contrast")
+
+        if true
+        {
+            // contrast
+            tmp = tmp!.adjustContrast(1.5)
+            if tmp == nil
+            {
+                print("\(name): failed contrast")
+                return nil
+            }
+            save(tmp!, "\(name): contrast")
+        }
+        
+        return tmp
     }
-    
 }
