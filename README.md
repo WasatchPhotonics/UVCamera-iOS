@@ -60,8 +60,14 @@ be highlighting regions which are especially low in UV.
 
 - 2.x (UV Absorbance)
 
-    - 2019-10-24 2.0.5
+    - 2019-10-25 2.0.6
+        - simplified intra-thread variable passing
         - added adjustGamma
+        - added adjustWhitePoint
+        - putzed around with JPEG flattening, tint3 etc
+        - added 3rd-order TintFilter (yay)
+    - 2019-10-24 2.0.5
+        - added applyGammaPreset
         - processing tweaks
     - 2019-10-23 2.0.4
         - added adjustExposure

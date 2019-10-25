@@ -70,6 +70,38 @@ class DropBlueFilter: CIFilter
     }
 }
 
+// I shouldn't have had to create this custom filter, and if I knew what I was
+// doing I'm sure I'd find there was an easier way to do it.  
+class TintFilter: CIFilter
+{
+    @objc dynamic var inputImage: CIImage?
+    
+    override public var outputImage: CIImage! {
+        get {
+            if let inputImage = self.inputImage {
+                let args = [inputImage as AnyObject]
+                return createCustomKernel().apply(extent: inputImage.extent, arguments: args)
+            } else {
+                return nil
+            }
+        }
+    }
+    
+    func createCustomKernel() -> CIColorKernel {
+        let kernelString =
+            "kernel vec4 chromaKey( __sample s) {" +
+                "vec4 newPixel = s.rgba;" +
+                "newPixel[0] = (s.r*s.r*s.r + s.g*s.g*s.g + s.b*s.b*s.b) / 3.0;" +
+                "newPixel[1] = 0.0;" +
+                "newPixel[2] = 0.0;" +
+                "newPixel[3] = 1.0;" +
+                "return newPixel;" +
+        "}"
+        return CIColorKernel(source: kernelString)!
+    }
+}
+
+
 // Please keep method names sorted alphabetically
 //
 // @todo dig through https://developer.apple.com/documentation/accelerate/vimage/adjusting_the_brightness_and_contrast_of_an_image
@@ -96,7 +128,36 @@ extension UIImage
         let img = context.createCGImage(outputImage, from: outputImage.extent)!
         return UIImage(cgImage: img)
     }
+
+    func adjustGamma(_ inputPower: Double) -> UIImage?
+    {
+        guard let cgImage = self.cgImage else { return nil }
+        let ciImage = CoreImage.CIImage(cgImage: cgImage)
+        let parameters = [ "inputPower": NSNumber(value: inputPower) ]
+        let outputImage = ciImage.applyingFilter("CIGammaAdjust", parameters: parameters)
+        let context = CIContext()
+        let img = context.createCGImage(outputImage, from: outputImage.extent)!
+        return UIImage(cgImage: img)
+    }
     
+    // this does not let me adjust the white point to red; throws error below
+    func adjustWhitePoint(_ ciColor: CIColor) -> UIImage?
+    {
+        let name = "adjustWhitePoint"
+        guard let cgImage = self.cgImage else { return nil }
+        let ciImage = CoreImage.CIImage(cgImage: cgImage)
+        let parameters = [ "inputColor": ciColor ]
+        let outputImage = ciImage.applyingFilter("CIWhitePointAdjust ", parameters: parameters)
+        let context = CIContext()
+        let newCI = context.createCGImage(outputImage, from: outputImage.extent)
+        if newCI == nil
+        {
+            print("\(name): error rendering output image")
+            return nil
+        }
+        return UIImage(cgImage: newCI!)
+    }
+
     func blend(_ img: UIImage, alpha: Float = 0.5, blendMode: CGBlendMode = CGBlendMode.normal) -> UIImage?
     {
         let size = self.size
@@ -114,7 +175,7 @@ extension UIImage
     }
     
     // https://stackoverflow.com/a/28907826/11615696
-    func caption(text: String) -> UIImage
+    func caption(text: String) -> UIImage?
     {
         let textColor = UIColor.white
         let backgroundColor = UIColor.black
@@ -137,7 +198,7 @@ extension UIImage
         let newImage = UIGraphicsGetImageFromCurrentImageContext()
         UIGraphicsEndImageContext()
 
-        return newImage!
+        return newImage
     }
     
     // https://stackoverflow.com/a/43206409/11615696
@@ -174,13 +235,7 @@ extension UIImage
         let imgFinal = UIGraphicsGetImageFromCurrentImageContext()
         UIGraphicsEndImageContext()
         
-        if let imgFinal = imgFinal
-        {
-            return imgFinal
-        }
-
-        print("Crop: error")
-        return nil
+        return imgFinal
     }
     
     func diff(_ rhs: UIImage) -> UIImage?
@@ -199,6 +254,7 @@ extension UIImage
         return blended
     }
     
+    // remove the blue channel (retain green and red)
     func dropBlue() -> UIImage?
     {
         guard let cgImage = self.cgImage else { return nil }
@@ -222,36 +278,55 @@ extension UIImage
     func flatten() -> UIImage?
     {
         let format = UIGraphicsImageRendererFormat.init()
-        format.opaque = true //Removes Alpha Channel
-        format.scale = self.scale //Keeps original image scale.
+        format.opaque = true // Removes Alpha Channel
+        format.scale = self.scale // Keeps original image scale.
         let size = self.size
         return UIGraphicsImageRenderer(size: size, format: format).image { _ in
             self.draw(in: CGRect(origin: .zero, size: size))
         }
     }
     
+    func flatten2() -> UIImage?
+    {
+        let name = "flatten2"
+        let data = self.jpegData(compressionQuality: 0.1)
+        if data == nil
+        {
+            print("\(name): failed jpegData")
+            return nil
+        }
+        return UIImage(data: data!)
+    }
+    
     func invert() -> UIImage?
     {
         guard let cgImage = self.cgImage else { return nil }
         let ciImage = CoreImage.CIImage(cgImage: cgImage)
-        guard let filter = CIFilter(name: "CIColorInvert") else {
+        guard let filter = CIFilter(name: "CIColorInvert")
+        else
+        {
             print("invert: error on filter")
             return nil
         }
         filter.setDefaults()
         filter.setValue(ciImage, forKey: kCIInputImageKey)
         let context = CIContext(options: nil)
-        guard let outputImage = filter.outputImage else {
+        guard let outputImage = filter.outputImage
+        else
+        {
             print("invert: error on output")
             return nil
         }
-        guard let outputImageCopy = context.createCGImage(outputImage, from: outputImage.extent) else {
+        guard let outputImageCopy = context.createCGImage(outputImage, from: outputImage.extent)
+        else
+        {
             print("invert: error on copy")
             return nil
         }
         return UIImage(cgImage: outputImageCopy)
     }
     
+    // drop the green and red channels (retain blue)
     func justBlue() -> UIImage?
     {
         guard let cgImage = self.cgImage else { return nil }
@@ -271,7 +346,6 @@ extension UIImage
         return nil
     }
     
-    // the "3" just means "3rd version of this function I've tried"
     // https://stackoverflow.com/a/55434232/11615696
     // generate a new image which is a monochrome (grayscale) version of the argument
     // see https://stackoverflow.com/a/40182080/11615696
@@ -297,6 +371,7 @@ extension UIImage
         return nil
     }
     
+    // the "3" just means, "this is the third time I've re-written this function"
     func normalize3() -> UIImage?
     {
         let colorSpace = CGColorSpaceCreateDeviceRGB()
@@ -427,14 +502,8 @@ extension UIImage
         let x = CGFloat(vertFlip ? -1.0 : 1.0)
         let y = CGFloat(horizFlip ? -1.0 : 1.0)
         context.scaleBy(x: x, y: y)
-        
-        // Move origin to middle
         context.translateBy(x: newSize.width/2, y: newSize.height/2)
-        
-        // Rotate around middle
         context.rotate(by: CGFloat(radians))
-        
-        // Draw the image at its center
         self.draw(in: CGRect(x: -self.size.width/2,
                              y: -self.size.height/2,
                              width: self.size.width,
@@ -445,16 +514,41 @@ extension UIImage
         
         return newImage
     }
+    
+    // apply a red tint
+    func tint3() -> UIImage?
+    {
+        guard let cgImage = self.cgImage else { return nil }
+        let inputCIImage = CoreImage.CIImage(cgImage: cgImage)
+        
+        let filter = TintFilter()
+        filter.setValue(inputCIImage, forKey: kCIInputImageKey)
+        
+        // Get the filtered output image and return it
+        let outputImage = filter.outputImage!
 
-    // pass CIColor(red: 0.7, green: 0.7, blue: 0.7)
+        let context = CIContext()
+        if let cgimg = context.createCGImage(outputImage, from: outputImage.extent)
+        {
+            return UIImage(cgImage: cgimg)
+        }
+        return nil
+    }
+
+
+    // construct ciColor argument as, e.g. CIColor(red: 0.7, green: 0.7, blue: 0.7)
     // see https://www.hackingwithswift.com/example-code/media/how-to-desaturate-an-image-to-make-it-black-and-white
-    func tint(_ ciColor: CIColor, intensity: CGFloat = 1.0) -> UIImage?
+    //
+    // This seems to add the tint to the regions of the image which are neither
+    // white (left white, or "very white shade of color") nor black (or "very
+    // dark shade of color")
+    func tintMidtones(_ ciColor: CIColor, intensity: CGFloat = 1.0) -> UIImage?
     {
         guard let currentCGImage = self.cgImage else { return nil }
         let currentCIImage = CIImage(cgImage: currentCGImage)
         
         let filter = CIFilter(name: "CIColorMonochrome")
-        filter?.setValue(ciColor,        forKey: kCIInputImageKey)
+        filter?.setValue(ciColor,        forKey: "inputColor")
         filter?.setValue(intensity,      forKey: "inputIntensity")
         filter?.setValue(currentCIImage, forKey: "inputImage")
 
