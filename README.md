@@ -4,27 +4,15 @@ UV Camera is an iPhone app designed to use the dual-rear cameras of an iPhone XS
 (or better), in combination with a custom UV filter inserted into the optical path
 of one camera, to enhance and highlight UV signal within a visual image.
 
-Visually, it turns this (where left side of paper is treated with spray-on UV-absorbant sunscreen):
-
-![VIS](https://github.com/WasatchPhotonics/UVCamera-iOS/raw/master/website/images/before.jpeg)
-
-...into this:
-
-![UV](https://github.com/WasatchPhotonics/UVCamera-iOS/raw/master/website/images/after.jpeg)
-
-This is the basic image processing pipeline:
-
-![Processing](https://github.com/WasatchPhotonics/UVCamera-iOS/raw/master/website/images/processing.png)
-
 # References
 
 - [Swift 4 & iOS 11: Custom Camera View (Ep3 of Build a Custom Camera)](https://www.youtube.com/watch?v=7TqXrMnfJy8)
 
-When an Android version floats up the priority stack, have a look at this:
+Should an Android version float up the priority stack, have a look at this:
 
 - https://medium.com/androiddevelopers/using-multiple-camera-streams-simultaneously-bf9488a29482
 
-# Backlog
+# Concept of Operations
 
 If we’re specifically looking to find UV absorbance, and as an approximation 
 we’re using shadows which are particularly or uniquely dark in the (380, 410nm) 
@@ -33,12 +21,12 @@ this:
 
 WHERE:
 
-- Suv = Shadows exclusively in the range (380, 410nm) (not appearing in Svis)
+- Suv  = Shadows exclusively in the range (380, 410nm) (not appearing in Svis)
 - Svis = Shadows anywhere in VIS (410, 740nm)
-- Sf = Shadows in filtered camera (380, 410nm)
-- Sgr = Shadows in green, red region (500, 740nm)
-- Sb = Shadows in blue region (380, 500nm)
-- Sb’ = Shadows in blue region, above filter (410, 500nm)
+- Sf   = Shadows in filtered camera (380, 410nm)
+- Sgr  = Shadows in green, red region (500, 740nm)
+- Sb   = Shadows in blue region (380, 500nm)
+- Sb’  = Shadows in blue region, above filter (410, 500nm)
 
 PROCEDURE:
 
@@ -60,6 +48,11 @@ be highlighting regions which are especially low in UV.
 
 - 2.x (UV Absorbance)
 
+    - 2019-10-28 2.0.7
+        - added cropVerticalShift
+        - added blurBox
+        - added posterize
+        - fixed adjustWhitePoint? (MAYBE no longer need TintFilter?)
     - 2019-10-25 2.0.6
         - simplified intra-thread variable passing
         - added adjustGamma

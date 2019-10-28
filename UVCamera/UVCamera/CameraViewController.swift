@@ -44,6 +44,8 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
     
     var imagePicker = UIImagePickerController()
     
+    let cameraOffsetPixels: CGFloat = 240.0
+    
     // -------------------------------------------------------------------------
     // ViewController delegate
     // -------------------------------------------------------------------------
@@ -548,8 +550,8 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         }
         else
         {
-            generateUnfiltered()
-            generateFiltered()
+            unfiltered = generateUnfiltered()
+            filtered = generateFiltered()
         }
 
         if unfiltered == nil
@@ -557,9 +559,41 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
             print("\(name): failed to generate unfiltered")
             return
         }
+
         if filtered == nil
         {
             print("\(name): failed to generate filtered")
+            return
+        }
+
+        // ---------------------------------------------------------------------
+        // apply vertical shifts, either to live images or to reprocessed
+        // ---------------------------------------------------------------------
+
+        // These operations are done here, OUTSIDE of generateUnfiltered /
+        // generateFiltered, because our stored test images were captured
+        // unshifted, so we need to including the shifting in the post-load
+        // processing.
+
+        unfiltered = unfiltered!.cropVerticalShift(pixels: 0.5 * cameraOffsetPixels) // shift down
+        if unfiltered == nil
+        {
+            print("\(name): failed to shift filtered")
+            return
+        }
+        save(unfiltered!, "unfiltered (shifted)")
+
+        filtered = filtered!.cropVerticalShift(pixels: -0.5 * cameraOffsetPixels) // shift up
+        if filtered == nil
+        {
+            print("\(name): failed to shift unfiltered")
+            return
+        }
+        save(filtered!, "filtered (shifted)")
+        
+        if filtered!.size != unfiltered!.size
+        {
+            print("\(name): shifted images have different sizes")
             return
         }
 
@@ -648,7 +682,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
                             guard let self = self else { return }
 
                             // let tintColor = CIColor(red: 1.0, green: 0.0, blue: 0.0)
-                            let SuvT = Suv!.tint3()
+                            let SuvT = Suv!.tintFilter()
                             // let SuvT = Suv!.adjustWhitePoint(tintColor)
                             if SuvT == nil
                             {
@@ -659,7 +693,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
                             Suv = nil // no longer needed
                             self.save(SuvT!, "SuvT (tinted UV shadows)")
                             
-                            let final = self.unfiltered!.blend(SuvT!)
+                            let final = self.unfiltered!.blend(SuvT!, alpha: 1.0)
                             if final == nil
                             {
                                 print("\(name): failed final blend")
@@ -684,46 +718,60 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         }
     }
     
-    func generateUnfiltered()
+    // Convert the (unfiltered) WFOV raw image to a cropped image registered
+    // with the (filtered) NFOV camera.
+    func generateUnfiltered() -> UIImage?
     {
         let name = "generateUnfiltered"
-        unfiltered = nil
         
         // This seems non-sensical, but it does something.  By default,
         // the cropped WFOV was coming out rotated 90º CCW (top = west).
         // When I explicitly rotated it 90º CW here, it came out (top =
         // east).  So now I explicitly rotate it 0º, and the cropped
         // version retains (top = north).
-        let rotated = state!.imageWide!.rotate(radians: 0)
-        if rotated == nil
+        var tmp = state!.imageWide!.rotate(radians: 0)
+        if tmp == nil
         {
             print("\(name): failed wide rotation")
-            return
+            return nil
         }
 
-        unfiltered = rotated!.crop(percent: 0.5)
-        if unfiltered == nil
+        // The WFOV is, obviously, Wide Field of View, and therefore contains
+        // much content that does not appear in the NFOV image.  As it happens,
+        // presumably by Apple's design, it contains precisely twice as much
+        // scene as the NFOV image, so to pre-register the images to "almost"
+        // the same contents (other than the fact that the cameras are offset
+        // rather than coaxial), all we have to do is crop the image down to 50%
+        // of its original dimensions, retaining the original aspect ratio and
+        // scaling.  (Just throw away a thick border around the center.)
+        tmp = tmp!.cropCentered(percent: 0.5)
+        if tmp == nil
         {
             print("\(name) failed to crop WFOV")
-            return
+            return nil
         }
 
-        save(unfiltered!, "unfiltered (cropped WFOV)", force: true)
+        save(tmp!, "unfiltered (cropped WFOV)", force: true)
+        return tmp
     }
     
-    func generateFiltered()
+    // Scale the (filtered) NFOV raw image to a smaller image registered
+    // with the (unfiltered) WFOV cropped photo.
+    func generateFiltered() -> UIImage?
     {
         let name = "generateFiltered"
         
-        filtered = state!.imageNarrow!.resize(0.5)
-        if filtered == nil
+        let tmp = state!.imageNarrow!.resize(0.5)
+        if tmp == nil
         {
             print("\(name) failed to resize NFOV (filtered)")
-            return
+            return nil
         }
-        save(filtered!, "filtered (resized NFOV)", force: true)
+
+        save(tmp!, "filtered (resized NFOV)", force: true)
+        return tmp
     }
-    
+
     // @brief generate shadows in filtered camera (380, 410nm)
     //
     // Process: copy filtered orig; drop green, red channels; grayscale; invert; increase contrast
@@ -763,7 +811,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
             save(tmp!, "\(name): mono")
         }
         
-        tmp = tmp!.normalize3() // normalize_slow()
+        tmp = tmp!.normalize() // normalize_slow()
         if tmp == nil
         {
             print("\(name): failed normalize")
@@ -795,7 +843,15 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
             print("\(name): failed darken gamma")
         }
         save(tmp!, "\(name): darken gamma")
-
+        
+        // more darker gamma
+        tmp = tmp!.adjustGamma(1.5)
+        if tmp == nil
+        {
+            print("\(name): failed adjust gamma")
+        }
+        save(tmp!, "\(name): adjust gamma")
+        
         // contrast
         tmp = tmp!.adjustContrast(2)
         if tmp == nil
@@ -804,6 +860,24 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
             return nil
         }
         save(tmp!, "\(name): contrast")
+        
+        // blur
+        tmp = tmp!.blurBox()
+        if tmp == nil
+        {
+            print("\(name): failed blur")
+            return nil
+        }
+        save(tmp!, "\(name): blur")
+
+        // posterize
+        tmp = tmp!.posterize(4)
+        if tmp == nil
+        {
+            print("\(name): failed posterize")
+            return nil
+        }
+        save(tmp!, "\(name): posterize")
 
         // will show white for shadows in (380, 410); black for light in (380, 410)
         save(tmp!, "Sf (\(name))")
@@ -846,7 +920,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         }
         save(tmp!, "\(name): mono")
 
-        tmp = tmp!.normalize3()
+        tmp = tmp!.normalize()
         if tmp == nil
         {
             print("\(name): failed normalize")
@@ -927,7 +1001,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         }
         save(tmp!, "\(name): mono")
 
-        tmp = tmp!.normalize3()
+        tmp = tmp!.normalize()
         if tmp == nil
         {
             print("\(name): failed normalize")
@@ -1029,7 +1103,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         }
         self.save(tmp!, "\(name): gamma contrast")
 
-        if true
+        if false
         {
             // contrast
             tmp = tmp!.adjustContrast(1.5)
@@ -1039,15 +1113,15 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
                 return nil
             }
             save(tmp!, "\(name): contrast")
-        }
         
-        tmp = tmp!.flatten2()
-        if tmp == nil
-        {
-            print("\(name): failed flatten2")
-            return nil
+            tmp = tmp!.flatten2()
+            if tmp == nil
+            {
+                print("\(name): failed flatten2")
+                return nil
+            }
+            self.save(tmp!, "\(name): flatten2")
         }
-        self.save(tmp!, "\(name): flatten2")
 
         return tmp
     }

@@ -4,7 +4,6 @@
 //
 //  Created by Mark Zieg on 6/12/19.
 //  Copyright © 2019 Wasatch Photonics. All rights reserved.
-//
 
 import Foundation
 import UIKit
@@ -71,7 +70,7 @@ class DropBlueFilter: CIFilter
 }
 
 // I shouldn't have had to create this custom filter, and if I knew what I was
-// doing I'm sure I'd find there was an easier way to do it.  
+// doing I'm sure I'd find there was an easier way to do it.
 class TintFilter: CIFilter
 {
     @objc dynamic var inputImage: CIImage?
@@ -87,24 +86,33 @@ class TintFilter: CIFilter
         }
     }
     
+    // for language reference Core Image Kernel Language, see
+    // https://developer.apple.com/metal/CoreImageKernelLanguageReference11.pdf:w
+    
     func createCustomKernel() -> CIColorKernel {
-        let kernelString =
-            "kernel vec4 chromaKey( __sample s) {" +
-                "vec4 newPixel = s.rgba;" +
-                "newPixel[0] = (s.r*s.r*s.r + s.g*s.g*s.g + s.b*s.b*s.b) / 3.0;" +
-                "newPixel[1] = 0.0;" +
-                "newPixel[2] = 0.0;" +
-                "newPixel[3] = 1.0;" +
-                "return newPixel;" +
-        "}"
+        let kernelString = """
+            kernel vec4 chromaKey( __sample s) {
+                vec4 newPixel = s.rgba;
+                float P = 1.0; // sharper with 2, 3, 4 etc
+                float rP = pow(s.r, P);
+                float gP = pow(s.g, P);
+                float bP = pow(s.b, P);
+                float newRed = (rP + gP + bP) / 3.0;
+                newPixel[0] = newRed;
+                newPixel[1] = 0.0;
+                newPixel[2] = 0.0;
+                newPixel[3] = newRed;
+                return newPixel;
+            }
+        """
         return CIColorKernel(source: kernelString)!
     }
 }
 
-
 // Please keep method names sorted alphabetically
 //
 // @todo dig through https://developer.apple.com/documentation/accelerate/vimage/adjusting_the_brightness_and_contrast_of_an_image
+// @see https://developer.apple.com/library/archive/documentation/GraphicsImaging/Reference/CoreImageFilterReference/index.html
 extension UIImage
 {
     func adjustContrast(_ factor: Double) -> UIImage?
@@ -140,14 +148,14 @@ extension UIImage
         return UIImage(cgImage: img)
     }
     
-    // this does not let me adjust the white point to red; throws error below
+    // not currently used? ; had a bug, now fixed, haven't iterated back to test
     func adjustWhitePoint(_ ciColor: CIColor) -> UIImage?
     {
         let name = "adjustWhitePoint"
         guard let cgImage = self.cgImage else { return nil }
         let ciImage = CoreImage.CIImage(cgImage: cgImage)
         let parameters = [ "inputColor": ciColor ]
-        let outputImage = ciImage.applyingFilter("CIWhitePointAdjust ", parameters: parameters)
+        let outputImage = ciImage.applyingFilter("CIWhitePointAdjust", parameters: parameters)
         let context = CIContext()
         let newCI = context.createCGImage(outputImage, from: outputImage.extent)
         if newCI == nil
@@ -172,6 +180,22 @@ extension UIImage
         UIGraphicsEndImageContext()
         
         return blended
+    }
+    
+    func blurBox() -> UIImage?
+    {
+        let name = "boxBlur"
+        guard let cgImage = self.cgImage else { return nil }
+        let ciImage = CoreImage.CIImage(cgImage: cgImage)
+        let outputImage = ciImage.applyingFilter("CIBoxBlur")
+        let context = CIContext()
+        let newCI = context.createCGImage(outputImage, from: outputImage.extent)
+        if newCI == nil
+        {
+            print("\(name): error rendering output image")
+            return nil
+        }
+        return UIImage(cgImage: newCI!)
     }
     
     // https://stackoverflow.com/a/28907826/11615696
@@ -210,14 +234,48 @@ extension UIImage
                        orientation: self.imageOrientation)
     }
     
-    func crop(percent: CGFloat) -> UIImage?
+    // The two cameras are vertically offset from one another: the center of the
+    // (unfiltered) WFOV is physically about 7mm above the center of the
+    // (filtered) NFOV lens.  What that translates to in pixel space we'll have
+    // see, but in test images seems to be around 240-260 pixels (say 250).
+    //
+    // So tentative plan is to crop half that (125px) from the BOTTOM of the
+    // WFOV (unfiltered) image, and half (125px) from the TOP of the NFOV
+    // (filtered) image.
+    //
+    // @pixels a POSITIVE value will crop 'px' pixels from the BOTTOM of the
+    //         image (shifting the image 'up'), while a NEGATIVE value will crop
+    //         'px' pixels from the TOP of the image (shifting the image 'down')
+    func cropVerticalShift(pixels: CGFloat) -> UIImage?
+    {
+        guard let cgImage = self.cgImage else { return nil }
+        
+        let newSize = CGSize(width: self.size.width, height: self.size.height - abs(pixels))
+        
+        let posX: CGFloat = 0
+        let posY: CGFloat = pixels >= 0 ? pixels : 0
+        
+        let rect: CGRect = CGRect(x: posX, y: posY, width: newSize.width, height: newSize.height)
+        
+        guard let cgiCropped = cgImage.cropping(to: rect) else { return nil }
+        let imgCropped = UIImage(cgImage: cgiCropped)
+        
+        UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0) // self.scale)
+        imgCropped.draw(in: CGRect(x: 0, y: 0, width: newSize.width, height: newSize.height))
+        let imgShifted = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+        
+        return imgShifted
+    }
+    
+    func cropCentered(percent: CGFloat) -> UIImage?
     {
         let size = CGSize(width: self.size.width * percent, height: self.size.height * percent)
-        return self.crop(to: size)
+        return self.cropCentered(to: size)
     }
     
     // https://stackoverflow.com/a/38777678/11615696
-    func crop(to: CGSize) -> UIImage?
+    func cropCentered(to: CGSize) -> UIImage?
     {
         guard let cgi = self.cgImage else { return nil }
         let origSize: CGSize = self.size
@@ -372,7 +430,7 @@ extension UIImage
     }
     
     // the "3" just means, "this is the third time I've re-written this function"
-    func normalize3() -> UIImage?
+    func normalize() -> UIImage?
     {
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         
@@ -417,62 +475,21 @@ extension UIImage
         }
     }
     
-    // haven't managed to surpass normalize3 yet
-    func normalize4_NOT_USED() -> UIImage?
+    func posterize(_ levels: NSNumber) -> UIImage?
     {
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        
-        guard let cgImage = cgImage else { return nil }
-        
-        // https://stackoverflow.com/a/6314642/11615696
-        var format = vImage_CGImageFormat(bitsPerComponent: UInt32(cgImage.bitsPerComponent),
-                                          bitsPerPixel: UInt32(cgImage.bitsPerPixel),
-                                          colorSpace: Unmanaged.passRetained(colorSpace),
-                                          bitmapInfo: cgImage.bitmapInfo,
-                                          version: 0,
-                                          decode: nil,
-                                          renderingIntent: cgImage.renderingIntent)
-        
-        var source = vImage_Buffer()
-        var result = vImageBuffer_InitWithCGImage(
-            &source,
-            &format,
-            nil,
-            cgImage,
-            vImage_Flags(kvImageNoFlags))
-        
-        guard result == kvImageNoError else {
-            print("normalize4: error on InitWithCGImage")
+        let name = "posterize"
+        guard let cgImage = self.cgImage else { return nil }
+        let ciImage = CoreImage.CIImage(cgImage: cgImage)
+        let parameters = [ "inputLevels": levels ]
+        let outputImage = ciImage.applyingFilter("CIColorPosterize", parameters: parameters)
+        let context = CIContext()
+        let newCI = context.createCGImage(outputImage, from: outputImage.extent)
+        if newCI == nil
+        {
+            print("\(name): error rendering output image")
             return nil
         }
-        
-        defer { free(source.data) }
-        
-        var destination = vImage_Buffer()
-        result = vImageBuffer_Init(
-            &destination,
-            vImagePixelCount(cgImage.height),
-            vImagePixelCount(cgImage.width),
-            32,
-            vImage_Flags(kvImageNoFlags))
-        
-        guard result == kvImageNoError else {
-            print("normalize4: error with Init")
-            return nil
-        }
-        
-        // result = vImageContrastStretch_ARGBFFFF(&source, &destination, nil, 256, 0, 255, vImage_Flags(kvImageLeaveAlphaUnchanged + kvImageDoNotTile))
-        result = vImageContrastStretch_ARGB8888(&source, &destination, vImage_Flags(kvImageLeaveAlphaUnchanged + kvImageDoNotTile))
-        guard result == kvImageNoError else {
-            print("normalize4: error on vImageContrastStretch")
-            return nil
-        }
-        
-        defer { free(destination.data) }
-        
-        return vImageCreateCGImageFromBuffer(&destination, &format, nil, nil, vImage_Flags(kvImageNoFlags), nil).map {
-            UIImage(cgImage: $0.takeRetainedValue(), scale: scale, orientation: imageOrientation)
-        }
+        return UIImage(cgImage: newCI!)
     }
     
     func resize(_ percent: CGFloat) -> UIImage?
@@ -515,8 +532,8 @@ extension UIImage
         return newImage
     }
     
-    // apply a red tint
-    func tint3() -> UIImage?
+    // apply a red tint using a custom filter
+    func tintFilter() -> UIImage?
     {
         guard let cgImage = self.cgImage else { return nil }
         let inputCIImage = CoreImage.CIImage(cgImage: cgImage)
@@ -534,7 +551,6 @@ extension UIImage
         }
         return nil
     }
-
 
     // construct ciColor argument as, e.g. CIColor(red: 0.7, green: 0.7, blue: 0.7)
     // see https://www.hackingwithswift.com/example-code/media/how-to-desaturate-an-image-to-make-it-black-and-white
@@ -561,11 +577,15 @@ extension UIImage
         }
         return nil
     }
-    
+}
+
+/*
+extension UIImage
+{
     // Manual grayscale function which also normalizes whites and blacks, with
     // the goal of making images more "subtractable".  Doesn't matter if input
     // image was already in greyscale or not.  SLOW (~1.25sec)
-    func normalize_slow_NOT_USED(intensify: Float = 1.0) -> UIImage?
+    func normalize_slow(intensify: Float = 1.0) -> UIImage?
     {
         if let cgi = self.cgImage
         {
@@ -655,7 +675,6 @@ extension UIImage
         }
         return nil
     }
-
 }
 
 class Util
@@ -709,181 +728,5 @@ class Util
        }
        return nil
    }
-
-}
-
-/*
-
-class Util
-{
-}
- 
-extension UIImage
-{
-     
-    // This is a "manual" diff between two images, since Apple doesn't seem to
-    // have a true "subtract" blend mode:
-    // https://developer.apple.com/documentation/coregraphics/cgblendmode
-    //
-    // Since we're only using the first component of each pixel, technically we
-    // could have pixelValues only return one byte per pixel, and have dataToImage
-    // only take one byte per pixel.
-    public func diffGrayscale_NOT_USED(_ rhs: UIImage) -> UIImage?
-    {
-        let cgiA = self.cgImage!
-        let cgiB = rhs.cgImage!
-     
-        let widthA = cgiA.width
-        let heightA = cgiA.height
-
-        let widthB = cgiB.width
-        let heightB = cgiB.height
-     
-        if let dataA = pixelValues()
-        {
-            if let dataB = rhs.pixelValues()
-            {
-                let lenA = dataA.count
-                let lenB = dataB.count
-     
-                if lenA != lenB || widthA != widthB || heightA != heightB
-                {
-                    print("ERROR: diffGrayscale requires same length, width and height")
-                    return nil
-                }
-
-                var newData = [UInt8](repeating: 0, count: lenA)
-                let pixels = widthA * heightA
-                for i in 0 ..< pixels
-                {
-                    let offset = i * 4
-     
-                    // assume that R, G and B are identical, so just grab Red (convert to signed for subtraction)
-                    let delta = (UInt8)(abs(Int16(dataA[offset]) - Int16(dataB[offset])))
-     
-                    newData[offset  ] = delta
-                    newData[offset+1] = delta
-                    newData[offset+2] = delta
-                }
-     
-                if let newCgi = Util.dataToImage(fromPixelValues: newData, width: widthA, height: heightA)
-                {
-                    return UIImage(cgImage: newCgi) // needs CGImageRelease(newCgi)?
-                }
-            }
-        }
-        print("normalize: error")
-        return nil
-    }
-
-    // Manual grayscale function which also normalizes whites and blacks, with
-    // the goal of making images more "subtractable".  Doesn't matter if input
-    // image was already in greyscale or not.  SLOW (~1.25sec)
-    func normalizeGrayscale_NOT_USED() -> UIImage?
-    {
-        if let cgi = self.cgImage
-        {
-            let width = cgi.width
-            let height = cgi.height
-
-            if let data = pixelValues()
-            {
-                let pixels = width * height
-                var origGrayscale = [Float32](repeating: 0, count: pixels)
-
-                // find min/max
-                var hi : Float = -999
-                var lo : Float =  999
-                for i in 0 ..< pixels
-                {
-                    let offset = i * 4
-     
-                    let R = Float(data[offset+0])
-                    let G = Float(data[offset+1])
-                    let B = Float(data[offset+2])
-                    let gray = (R + G + B) / 3.0
-                    hi = max(gray, hi)
-                    lo = min(gray, lo)
-                    origGrayscale[i] = gray
-                }
-
-                print("norm: source intensity range (\(lo), hi \(hi))")
-                if hi == lo
-                {
-                    print("ERROR: nothing to normalize (lo == hi)")
-                    return nil
-                }
-     
-                // iterate through data a second time, normalizing to the min/max
-                var newData = [UInt8](repeating: 0, count: pixels * 4)
-                for i in 0 ..< pixels
-                {
-                    let offset = i * 4
-                    let norm = (UInt8)(((origGrayscale[i] - lo) / (hi - lo)) * 255.0)
-
-                    newData[offset+0] = norm
-                    newData[offset+1] = norm
-                    newData[offset+2] = norm
-                }
-     
-                if let newCgi = Util.dataToImage(fromPixelValues: newData, width: width, height: height)
-                {
-                    return UIImage(cgImage: newCgi)  // need CGImageRelease(newCgi)?
-                }
-            }
-        }
-        print("norm: error")
-        return nil
-    }
-    
-     public func orientationToString_NOT_USED() -> String
-     {
-         switch(self.imageOrientation)
-         {
-             case .up: return "up"
-             case .down: return "down"
-             case .left: return "left"
-             case .right: return "right"
-             case .upMirrored: return "upMirrored"
-             case .downMirrored: return "downMirrored"
-             case .leftMirrored: return "leftMirrored"
-             case .rightMirrored: return "rightMirrored"
-         }
-     }
-     
-
-     public func mirrorHorizontal_NOT_USED() -> UIImage?
-     {
-        return UIImage(cgImage: self.cgImage!, scale: 1.0, orientation: .leftMirrored)
-     }
-     
-     // https://developer.apple.com/library/archive/documentation/GraphicsImaging/Conceptual/drawingwithquartz2d/dq_images/dq_images.html#//apple_ref/doc/uid/TP30001066-CH212-CJBDCFBH
-     public func diff_NOT_USED(_ rhs: UIImage) -> UIImage?
-     {
-        let cgi : CGImage = self.cgImage!
-        
-        // Create a context of the starting image size and set it as the current one
-        UIGraphicsBeginImageContext(self.size)
-        
-        // Draw the starting image in the current context as background
-        self.draw(at: CGPoint.zero)
-        
-        // Get the current context
-        let context = UIGraphicsGetCurrentContext()!
-        
-        // see https://developer.apple.com/documentation/coregraphics/cgblendmode
-        context.setBlendMode(CGBlendMode.xor)
-        
-        // subtract the second image
-        let r = CGRect(x: 0, y: 0, width: cgi.width, height: cgi.height)
-        context.draw(rhs.cgImage!, in: r)
-        
-        // Save the context as a new UIImage
-        let diff = UIGraphicsGetImageFromCurrentImageContext()
-        UIGraphicsEndImageContext()
-        
-        // Return modified image
-        return diff
-    }
 }
 */
