@@ -48,6 +48,9 @@ be highlighting regions which are especially low in UV.
 
 - 2.x (UV Absorbance)
 
+    - 2019-10-29 2.0.8
+        - updated docs
+        - added Makefile
     - 2019-10-28 2.0.7
         - added cropVerticalShift
         - added blurBox
