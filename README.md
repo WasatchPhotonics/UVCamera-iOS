@@ -48,6 +48,9 @@ be highlighting regions which are especially low in UV.
 
 - 2.x (UV Absorbance)
 
+    - 2019-11-07 2.0.9
+        - added Settings screen (boolean switch position messed up, not sure why)
+        - save/load fully raw images to support re-registration
     - 2019-10-29 2.0.8
         - updated docs
         - added Makefile

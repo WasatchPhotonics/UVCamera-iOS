@@ -18,5 +18,32 @@ class State
     var imageProcessed : UIImage? = nil
     
     var saveComponents = false
+    
+    let processingSettings = ProcessingSettings()
+}
 
+class ProcessingSettings
+{
+    var cameraOffsetPixels : Int = 240
+
+    var generateShadowsInFilteredExposureEnable = true
+    var generateShadowsInFilteredExposure : Double = 5.0
+    var generateShadowsInFilteredGammaPresetEnable = true
+    var generateShadowsInFilteredGammaPreset : String = "E2"
+    var generateShadowsInFilteredGammaAdjustEnable = true
+    var generateShadowsInFilteredGammaAdjust : Double = 1.5
+    var generateShadowsInFilteredContrastEnable = true
+    var generateShadowsInFilteredContrast : Double = 2.0
+    var generateShadowsInFilteredPosterizeEnable = true
+    var generateShadowsInFilteredPosterize : Int = 4
+
+    var generateShadowsInGreenRedExposure : Double = 5.0
+    var generateShadowsInGreenRedContrast : Double = 1.5
+    
+    var generateShadowsInBlueExposure : Double = 5.0
+    var generateShadowsInBlueContrast : Double = 1.5
+    
+    var generateShadowsInUVPreset : String = "L3"
+
+    var finalBlendAlpha : Float = 1.0
 }

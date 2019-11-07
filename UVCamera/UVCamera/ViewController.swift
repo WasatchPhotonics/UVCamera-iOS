@@ -11,7 +11,7 @@ import UIKit
 class ViewController: UIViewController {
 
     var state : State?
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -50,8 +50,4 @@ class ViewController: UIViewController {
         let flag = sender as! UISwitch
         return flag.isOn
     }
-    
-    
-    
 }
-

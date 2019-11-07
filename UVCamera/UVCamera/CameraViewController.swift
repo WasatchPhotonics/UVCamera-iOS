@@ -37,19 +37,17 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
     // minimal workflow testing on a single-camera iPhone
     var useUVCamera = true
     
-    let captionPhotos = true
-    
     var unfiltered : UIImage?
     var filtered : UIImage?
     
     var imagePicker = UIImagePickerController()
     
-    let cameraOffsetPixels: CGFloat = 240.0
-    
     // -------------------------------------------------------------------------
     // ViewController delegate
     // -------------------------------------------------------------------------
 
+    // This fires EACH TIME seguing from Main Menu, but does NOT fire coming
+    // "Back" from Settings
     override func viewDidLoad()
     {
         super.viewDidLoad()
@@ -63,8 +61,15 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         print("finding cameras")
         cameraWide = findCamera(AVCaptureDevice.DeviceType.builtInWideAngleCamera)
         cameraNarrow = findCamera(AVCaptureDevice.DeviceType.builtInTelephotoCamera)
+
+        // make the PIP image clickable
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(CameraViewController.imageTapped(gesture:)))
+        imageViewPIP.addGestureRecognizer(tapGesture)
+        imageViewPIP.isUserInteractionEnabled = true
     }
     
+    // This fires EACH TIME seguing from Main Menu, but does NOT fire coming
+    // "Back" from Settings
     override func viewWillAppear(_ animated: Bool)
     {
         super.viewWillAppear(animated)
@@ -77,24 +82,31 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
             return
         }
         
-        print("adding WFOV camera as input to captureSessionWide")
-        do
+        if captureSessionWide.inputs.count == 0
         {
-            let captureDeviceInput = try AVCaptureDeviceInput(device: cameraWide!)
-            captureSessionWide.addInput(captureDeviceInput)
-            photoOutputWide = AVCapturePhotoOutput()
-            photoOutputWide?.setPreparedPhotoSettingsArray(
-                [AVCapturePhotoSettings(format: [AVVideoCodecKey: AVVideoCodecType.jpeg])],
-                completionHandler: nil)
-            captureSessionWide.addOutput(photoOutputWide!)
+            print("adding WFOV camera as input to captureSessionWide")
+            do
+            {
+                let captureDeviceInput = try AVCaptureDeviceInput(device: cameraWide!)
+                captureSessionWide.addInput(captureDeviceInput)
+                photoOutputWide = AVCapturePhotoOutput()
+                photoOutputWide?.setPreparedPhotoSettingsArray(
+                    [AVCapturePhotoSettings(format: [AVVideoCodecKey: AVVideoCodecType.jpeg])],
+                    completionHandler: nil)
+                captureSessionWide.addOutput(photoOutputWide!)
+            }
+            catch
+            {
+                print(error)
+                return
+            }
         }
-        catch
+        else
         {
-            print(error)
-            return
+            print("not adding captureSessionWide input")
         }
 
-        if useUVCamera
+        if useUVCamera && captureSessionNarrow.inputs.count == 0
         {
             print("adding NFOV camera as input to captureSessionNarrow")
             do
@@ -113,6 +125,10 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
                 return
             }
         }
+        else
+        {
+            print("not adding captureSessionNarrow input")
+        }
         
         setCameraPreviewFullScreen()
 
@@ -121,6 +137,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
     
     override func viewWillDisappear(_ animated: Bool)
     {
+        print("CameraViewController disappearing")
         super.viewWillDisappear(animated)
         
         // stop any running captureSessions
@@ -162,6 +179,17 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         }
     }
 
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?)
+    {
+        print("preparing for transition")
+        if let vc = segue.destination as? SettingsViewController
+        {
+            print("transitioning to SettingsViewController")
+            vc.state = state
+        }
+    }
+
+
     // -------------------------------------------------------------------------
     // AVCapturePhotoCaptureDelegate
     // -------------------------------------------------------------------------
@@ -198,6 +226,10 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
                     
                     // store a copy
                     state!.imageNarrow = image
+                    
+                    // save raw images
+                    save(state!.imageWide!, "unfiltered (raw)", force: true, caption: false)
+                    save(state!.imageNarrow!, "filtered (raw)", force: true, caption: false)
 
                     // perform multi-camera processing
                     performProcessing()
@@ -448,7 +480,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         // when the requested photo is complete, it will be delivered via photoOutput(_:didFinishProcessingPhoto)
     }
     
-    func save(_ image: UIImage, _ label: String, force: Bool=false)
+    func save(_ image: UIImage, _ label: String, force: Bool=false, caption: Bool=true)
     {
         if !force && !state!.saveComponents
         {
@@ -459,7 +491,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         
         // https://stackoverflow.com/a/40858152
         var imageSave = image
-        if captionPhotos
+        if caption
         {
             if let captioned = image.caption(text: label)
             {
@@ -469,6 +501,21 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         UIImageWriteToSavedPhotosAlbum(imageSave, self, #selector(image(_:didFinishSavingWithError:contextInfo:)), nil)
     }
 
+    // -------------------------------------------------------------------------
+    // Gestures
+    // -------------------------------------------------------------------------
+
+    @objc func imageTapped(gesture: UIGestureRecognizer)
+    {
+        if (gesture.view as? UIImageView) != nil
+        {
+            print("PIP image tapped")
+            
+            // Open the Photos app
+            UIApplication.shared.open(URL(string:"photos-redirect://")!)
+        }
+    }
+    
     // -------------------------------------------------------------------------
     // Image Processing
     // -------------------------------------------------------------------------
@@ -542,24 +589,14 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
             return
         }
         
-        if reprocessing
-        {
-            // don't re-scale, re-crop the loaded images
-            filtered = state!.imageNarrow
-            unfiltered = state!.imageWide
-        }
-        else
-        {
-            unfiltered = generateUnfiltered()
-            filtered = generateFiltered()
-        }
-
+        unfiltered = registerUnfiltered()
         if unfiltered == nil
         {
             print("\(name): failed to generate unfiltered")
             return
         }
 
+        filtered = registerFiltered()
         if filtered == nil
         {
             print("\(name): failed to generate filtered")
@@ -575,7 +612,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         // unshifted, so we need to including the shifting in the post-load
         // processing.
 
-        unfiltered = unfiltered!.cropVerticalShift(pixels: 0.5 * cameraOffsetPixels) // shift down
+        unfiltered = unfiltered!.cropVerticalShift(pixels: 0.5 * CGFloat(state!.processingSettings.cameraOffsetPixels)) // shift down
         if unfiltered == nil
         {
             print("\(name): failed to shift filtered")
@@ -583,7 +620,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         }
         save(unfiltered!, "unfiltered (shifted)")
 
-        filtered = filtered!.cropVerticalShift(pixels: -0.5 * cameraOffsetPixels) // shift up
+        filtered = filtered!.cropVerticalShift(pixels: -0.5 * CGFloat(state!.processingSettings.cameraOffsetPixels)) // shift up
         if filtered == nil
         {
             print("\(name): failed to shift unfiltered")
@@ -693,7 +730,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
                             Suv = nil // no longer needed
                             self.save(SuvT!, "SuvT (tinted UV shadows)")
                             
-                            let final = self.unfiltered!.blend(SuvT!, alpha: 1.0)
+                            let final = self.unfiltered!.blend(SuvT!, alpha: Float(self.state!.processingSettings.finalBlendAlpha))
                             if final == nil
                             {
                                 print("\(name): failed final blend")
@@ -717,10 +754,27 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
             }
         }
     }
+
+    // Scale the (filtered) NFOV raw image to a smaller image registered
+    // with the (unfiltered) WFOV cropped photo.
+    func registerFiltered() -> UIImage?
+    {
+        let name = "generateFiltered"
+        
+        let tmp = state!.imageNarrow!.resize(0.5)
+        if tmp == nil
+        {
+            print("\(name) failed to resize NFOV (filtered)")
+            return nil
+        }
+
+        save(tmp!, "filtered (resized NFOV)")
+        return tmp
+    }
     
     // Convert the (unfiltered) WFOV raw image to a cropped image registered
     // with the (filtered) NFOV camera.
-    func generateUnfiltered() -> UIImage?
+    func registerUnfiltered(size: CGSize? = nil) -> UIImage?
     {
         let name = "generateUnfiltered"
         
@@ -735,6 +789,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
             print("\(name): failed wide rotation")
             return nil
         }
+        save(tmp!, "unfiltered (derotated)")
 
         // The WFOV is, obviously, Wide Field of View, and therefore contains
         // much content that does not appear in the NFOV image.  As it happens,
@@ -744,34 +799,46 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         // rather than coaxial), all we have to do is crop the image down to 50%
         // of its original dimensions, retaining the original aspect ratio and
         // scaling.  (Just throw away a thick border around the center.)
-        tmp = tmp!.cropCentered(percent: 0.5)
-        if tmp == nil
+        //
+        // 2.0.9: actually, the WFOV is a tiny bit MORE than 2x the NFOV, so let's
+        // shrink it down more than 50%, and then crop to precisely the NFOV
+        // pixel dimensions.
+        if true
         {
-            print("\(name) failed to crop WFOV")
-            return nil
+            tmp = tmp!.cropCentered(percent: 0.5)
+            if tmp == nil
+            {
+                print("\(name) failed to crop WFOV")
+                return nil
+            }
+            save(tmp!, "unfiltered (cropped centered)")
         }
-
-        save(tmp!, "unfiltered (cropped WFOV)", force: true)
+        else
+        {
+            tmp = tmp!.resize(0.55) // NOT TESTED
+            if tmp == nil
+            {
+                print("\(name) failed to scale WFOV")
+                return nil
+            }
+            save(tmp!, "unfiltered (scaled WFOV)", force: true)
+            
+            if let sz = size
+            {
+                tmp = tmp!.cropCentered(to: sz)
+                if tmp == nil
+                {
+                    print("\(name) failed to crop WFOV -> NFOV")
+                    return nil
+                }
+                save(tmp!, "unfiltered (crop WFOV -> NFOV)", force: true)
+            }
+        }
+        
+        save(tmp!, "unfiltered (cropped/scaled WFOV)")
         return tmp
     }
     
-    // Scale the (filtered) NFOV raw image to a smaller image registered
-    // with the (unfiltered) WFOV cropped photo.
-    func generateFiltered() -> UIImage?
-    {
-        let name = "generateFiltered"
-        
-        let tmp = state!.imageNarrow!.resize(0.5)
-        if tmp == nil
-        {
-            print("\(name) failed to resize NFOV (filtered)")
-            return nil
-        }
-
-        save(tmp!, "filtered (resized NFOV)", force: true)
-        return tmp
-    }
-
     // @brief generate shadows in filtered camera (380, 410nm)
     //
     // Process: copy filtered orig; drop green, red channels; grayscale; invert; increase contrast
@@ -819,13 +886,16 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         }
         save(tmp!, "\(name): normalized")
         
-        tmp = tmp!.adjustExposure(5.0)
-        if tmp == nil
+        if state!.processingSettings.generateShadowsInFilteredExposureEnable
         {
-            print("\(name): failed exposure")
-            return nil
+            tmp = tmp!.adjustExposure(state!.processingSettings.generateShadowsInFilteredExposure)
+            if tmp == nil
+            {
+                print("\(name): failed exposure")
+                return nil
+            }
+            save(tmp!, "\(name): exposure")
         }
-        save(tmp!, "\(name): exposure")
 
         // invert
         tmp = tmp!.invert()
@@ -836,30 +906,39 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         }
         save(tmp!, "\(name): inverted")
         
-        // darken gamma
-        tmp = tmp!.applyGammaPreset(preset: "E2")
-        if tmp == nil
+        if state!.processingSettings.generateShadowsInFilteredGammaPresetEnable
         {
-            print("\(name): failed darken gamma")
+            // darken gamma
+            tmp = tmp!.applyGammaPreset(preset: state!.processingSettings.generateShadowsInFilteredGammaPreset)
+            if tmp == nil
+            {
+                print("\(name): failed darken gamma")
+            }
+            save(tmp!, "\(name): darken gamma")
         }
-        save(tmp!, "\(name): darken gamma")
-        
-        // more darker gamma
-        tmp = tmp!.adjustGamma(1.5)
-        if tmp == nil
+
+        if state!.processingSettings.generateShadowsInFilteredGammaAdjustEnable
         {
-            print("\(name): failed adjust gamma")
+            // more darker gamma
+            tmp = tmp!.adjustGamma(state!.processingSettings.generateShadowsInFilteredGammaAdjust)
+            if tmp == nil
+            {
+                print("\(name): failed adjust gamma")
+            }
+            save(tmp!, "\(name): adjust gamma")
         }
-        save(tmp!, "\(name): adjust gamma")
         
         // contrast
-        tmp = tmp!.adjustContrast(2)
-        if tmp == nil
+        if state!.processingSettings.generateShadowsInFilteredContrastEnable
         {
-            print("\(name): failed contrast")
-            return nil
+            tmp = tmp!.adjustContrast(state!.processingSettings.generateShadowsInFilteredContrast)
+            if tmp == nil
+            {
+                print("\(name): failed contrast")
+                return nil
+            }
+            save(tmp!, "\(name): contrast")
         }
-        save(tmp!, "\(name): contrast")
         
         // blur
         tmp = tmp!.blurBox()
@@ -869,15 +948,18 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
             return nil
         }
         save(tmp!, "\(name): blur")
-
+    
         // posterize
-        tmp = tmp!.posterize(4)
-        if tmp == nil
+        if state!.processingSettings.generateShadowsInFilteredPosterizeEnable
         {
-            print("\(name): failed posterize")
-            return nil
+            tmp = tmp!.posterize(NSNumber(value: state!.processingSettings.generateShadowsInFilteredPosterize))
+            if tmp == nil
+            {
+                print("\(name): failed posterize")
+                return nil
+            }
+            save(tmp!, "\(name): posterize")
         }
-        save(tmp!, "\(name): posterize")
 
         // will show white for shadows in (380, 410); black for light in (380, 410)
         save(tmp!, "Sf (\(name))")
@@ -930,7 +1012,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
 
         if false
         {
-            tmp = tmp!.adjustExposure(5.0)
+            tmp = tmp!.adjustExposure(state!.processingSettings.generateShadowsInGreenRedExposure)
             if tmp == nil
             {
                 print("\(name): failed exposure")
@@ -951,7 +1033,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         if false
         {
             // contrast
-            tmp = tmp!.adjustContrast(1.5)
+            tmp = tmp!.adjustContrast(state!.processingSettings.generateShadowsInGreenRedContrast)
             if tmp == nil
             {
                 print("\(name): failed contrast")
@@ -1011,7 +1093,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         
         if false
         {
-            tmp = tmp!.adjustExposure(5.0)
+            tmp = tmp!.adjustExposure(state!.processingSettings.generateShadowsInBlueExposure)
             if tmp == nil
             {
                 print("\(name): failed exposure")
@@ -1032,7 +1114,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         if false
         {
             // contrast
-            tmp = tmp!.adjustContrast(1.5)
+            tmp = tmp!.adjustContrast(state!.processingSettings.generateShadowsInBlueExposure)
             if tmp == nil
             {
                 print("\(name): failed contrast")
@@ -1095,7 +1177,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         }
         self.save(tmp!, "\(name): diff")
         
-        tmp = tmp!.applyGammaPreset(preset: "L3")
+        tmp = tmp!.applyGammaPreset(preset: state!.processingSettings.generateShadowsInUVPreset)
         if tmp == nil
         {
             print("\(name): failed gamma contrast")

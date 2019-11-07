@@ -93,7 +93,7 @@ class TintFilter: CIFilter
         let kernelString = """
             kernel vec4 chromaKey( __sample s) {
                 vec4 newPixel = s.rgba;
-                float P = 1.0; // sharper with 2, 3, 4 etc
+                float P = 4.0; // sharper with 2, 3, 4 etc
                 float rP = pow(s.r, P);
                 float gP = pow(s.g, P);
                 float bP = pow(s.b, P);
@@ -268,6 +268,14 @@ extension UIImage
         return imgShifted
     }
     
+    // This crops the middle of the image, where only the given % of the center
+    // is retained.  So if 'percent' is 1.0 the image will be returned unchanged;
+    // if a value of 0.5 is sent, the image will be cropped to 50% of the original
+    // dimensions (with the outer boarder stripped away).  If a value larger than
+    // 1.0 is sent, it will probably(?) add a border around the image, although
+    // whether that will be white, black, transparent or otherwise hasn't been
+    // tested or defined.  (Actually, it will probably crash, looking at
+    // cropCentered(to:).)
     func cropCentered(percent: CGFloat) -> UIImage?
     {
         let size = CGSize(width: self.size.width * percent, height: self.size.height * percent)
@@ -429,7 +437,6 @@ extension UIImage
         return nil
     }
     
-    // the "3" just means, "this is the third time I've re-written this function"
     func normalize() -> UIImage?
     {
         let colorSpace = CGColorSpaceCreateDeviceRGB()
@@ -492,6 +499,7 @@ extension UIImage
         return UIImage(cgImage: newCI!)
     }
     
+    // @todo rename rescale()?
     func resize(_ percent: CGFloat) -> UIImage?
     {
         let height = size.height * percent

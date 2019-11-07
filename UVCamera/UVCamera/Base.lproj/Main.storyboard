@@ -2,7 +2,6 @@
 <document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="15400" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="YNh-Me-ZD6">
     <device id="retina5_9" orientation="portrait" appearance="light"/>
     <dependencies>
-        <deployment identifier="iOS"/>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="15404"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
@@ -106,7 +105,7 @@
                                 </constraints>
                             </imageView>
                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="3wd-9b-VP3" userLabel="ButtonSwap">
-                                <rect key="frame" x="305" y="149" width="50" height="51"/>
+                                <rect key="frame" x="305" y="108" width="50" height="51"/>
                                 <constraints>
                                     <constraint firstAttribute="width" secondItem="3wd-9b-VP3" secondAttribute="height" multiplier="50:51" id="WRa-It-NnI"/>
                                     <constraint firstAttribute="height" constant="51" id="vw4-h9-lo2"/>
@@ -139,17 +138,31 @@
                                     <action selector="loadClicked:" destination="FOj-Qu-blB" eventType="touchUpInside" id="C2o-yW-3jJ"/>
                                 </connections>
                             </button>
+                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="FRy-MZ-fqY" userLabel="ButtonSettings">
+                                <rect key="frame" x="305" y="179" width="50" height="50"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" constant="50" id="1uc-Ng-aKX"/>
+                                    <constraint firstAttribute="height" constant="50" id="Ik0-Od-CHG"/>
+                                </constraints>
+                                <state key="normal" title="Button" image="Settings"/>
+                                <connections>
+                                    <segue destination="CaJ-l6-s6I" kind="show" id="BeW-ik-vCo"/>
+                                </connections>
+                            </button>
                         </subviews>
                         <color key="backgroundColor" white="0.0" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                         <constraints>
                             <constraint firstItem="euJ-q6-YVn" firstAttribute="top" secondItem="qv0-dL-bPw" secondAttribute="top" id="3HS-3l-teJ"/>
+                            <constraint firstItem="qv0-dL-bPw" firstAttribute="trailing" secondItem="FRy-MZ-fqY" secondAttribute="trailing" constant="20" id="5fx-FM-nQm"/>
                             <constraint firstItem="cIm-cY-H2h" firstAttribute="top" secondItem="qv0-dL-bPw" secondAttribute="top" constant="20" id="AMS-b6-K2R"/>
-                            <constraint firstItem="3wd-9b-VP3" firstAttribute="centerY" secondItem="cIm-cY-H2h" secondAttribute="centerY" id="Bhw-7a-SeN"/>
+                            <constraint firstItem="qv0-dL-bPw" firstAttribute="trailing" secondItem="3wd-9b-VP3" secondAttribute="trailing" constant="20" id="IzZ-d8-zRy"/>
                             <constraint firstItem="oCA-ZD-YVo" firstAttribute="centerX" secondItem="qv0-dL-bPw" secondAttribute="centerX" id="JUd-Cg-P6Y" userLabel="ButtonPhoto.centerX = Safe Area.centerX"/>
                             <constraint firstAttribute="bottom" secondItem="euJ-q6-YVn" secondAttribute="bottom" id="TlS-2v-mp3"/>
                             <constraint firstItem="qv0-dL-bPw" firstAttribute="bottom" secondItem="djh-nT-3gT" secondAttribute="bottom" constant="10" id="dzI-Y7-jrl"/>
                             <constraint firstItem="euJ-q6-YVn" firstAttribute="leading" secondItem="qv0-dL-bPw" secondAttribute="leading" id="hPX-da-Ibk"/>
                             <constraint firstItem="qv0-dL-bPw" firstAttribute="trailing" secondItem="euJ-q6-YVn" secondAttribute="trailing" id="jJa-3U-2s3" userLabel="ImageViewFullScreen.trailing = Safe Area.trailing"/>
+                            <constraint firstItem="FRy-MZ-fqY" firstAttribute="top" secondItem="3wd-9b-VP3" secondAttribute="bottom" constant="20" id="kkM-UG-XfW"/>
+                            <constraint firstItem="3wd-9b-VP3" firstAttribute="top" secondItem="qv0-dL-bPw" secondAttribute="top" constant="20" id="kqD-fc-xhF"/>
                             <constraint firstItem="djh-nT-3gT" firstAttribute="centerX" secondItem="dNn-yk-rCO" secondAttribute="centerX" id="oe8-y5-Kcj"/>
                             <constraint firstItem="qv0-dL-bPw" firstAttribute="bottom" secondItem="oCA-ZD-YVo" secondAttribute="bottom" constant="60" id="pkh-w3-Nj2"/>
                             <constraint firstItem="cIm-cY-H2h" firstAttribute="leading" secondItem="qv0-dL-bPw" secondAttribute="leading" constant="20" id="svV-JA-ArV"/>
@@ -165,6 +178,22 @@
                 <placeholder placeholderIdentifier="IBFirstResponder" id="1Kx-jT-I4z" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
             <point key="canvasLocation" x="2080.8000000000002" y="39.90147783251232"/>
+        </scene>
+        <!--Settings View Controller-->
+        <scene sceneID="w6M-QT-Po7">
+            <objects>
+                <viewController id="CaJ-l6-s6I" customClass="SettingsViewController" customModule="UVCamera" customModuleProvider="target" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="blS-3t-JCG">
+                        <rect key="frame" x="0.0" y="0.0" width="375" height="812"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor" cocoaTouchSystemColor="whiteColor"/>
+                        <viewLayoutGuide key="safeArea" id="5Nd-zG-CYN"/>
+                    </view>
+                    <navigationItem key="navigationItem" id="jAe-Vh-ZOA"/>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="P3e-My-lbv" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="2923" y="37"/>
         </scene>
         <!--Navigation Controller-->
         <scene sceneID="ozb-ig-E85">
@@ -188,6 +217,7 @@
     <resources>
         <image name="Background" width="500" height="800"/>
         <image name="Logo" width="235.66667175292969" height="232"/>
+        <image name="Settings" width="152.33332824707031" height="158.66667175292969"/>
         <image name="Swap" width="677.33331298828125" height="713.33331298828125"/>
     </resources>
 </document>
