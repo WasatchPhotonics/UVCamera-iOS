@@ -172,6 +172,7 @@ class SettingsViewController: UIViewController, UITableViewDelegate,  UITableVie
 
 }
 
+// @see https://blog.usejournal.com/easy-tableview-setup-tutorial-swift-4-ad48ec4cbd45
 class SettingCell: UITableViewCell {
     
     let cellView: UIView = {
@@ -193,6 +194,7 @@ class SettingCell: UITableViewCell {
     let myTextField: UITextField = {
         let tf = UITextField()
         tf.font = UIFont.boldSystemFont(ofSize: 16)
+        tf.textColor = UIColor.white
         tf.translatesAutoresizingMaskIntoConstraints = false
         return tf
     }()
@@ -222,21 +224,21 @@ class SettingCell: UITableViewCell {
             cellView.bottomAnchor.constraint(equalTo: self.bottomAnchor)
         ])
         
-        myLabel.centerYAnchor.constraint(equalTo: self.centerYAnchor).isActive = true
         myLabel.heightAnchor.constraint(equalToConstant: 200).isActive = true
         myLabel.widthAnchor.constraint(equalToConstant: 200).isActive = true
+        myLabel.centerYAnchor.constraint(equalTo: cellView.centerYAnchor).isActive = true
         myLabel.leftAnchor.constraint(equalTo: cellView.leftAnchor, constant: 20).isActive = true
         
-        myTextField.centerYAnchor.constraint(equalTo: self.centerYAnchor).isActive = true
         myTextField.heightAnchor.constraint(equalToConstant: 200).isActive = true
         myTextField.widthAnchor.constraint(equalToConstant: 200).isActive = true
+        myTextField.centerYAnchor.constraint(equalTo: cellView.centerYAnchor).isActive = true
         myTextField.rightAnchor.constraint(equalTo: cellView.rightAnchor, constant: 20).isActive = true
 
         mySwitch.centerYAnchor.constraint(equalTo: self.centerYAnchor).isActive = true
         // mySwitch.bottomAnchor.constraint(equalTo: self.bottomAnchor, constant: 20).isActive = true
         // mySwitch.heightAnchor.constraint(equalToConstant: 200).isActive = true
         // mySwitch.widthAnchor.constraint(equalToConstant: 200).isActive = true
-        mySwitch.rightAnchor.constraint(equalTo: myTextField.rightAnchor).isActive = true
+        mySwitch.rightAnchor.constraint(equalTo: cellView.rightAnchor).isActive = true
         
     }
 
