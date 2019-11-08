@@ -1,97 +1,232 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
     <title>UV Camera</title>
     <meta charset="UTF-8">
 </head>
 <body>
-    <img src="images/banner.png" style="object-fit: scale-down"/>
+    <img src="images/banner.png" style="object-fit: scale-down" alt="Wasatch Photonics"/>
     <br clear="all" />
 
+    <h1>UV Camera Help</h1>
     <div>
-        <h1>UV Camera Help</h1>
-            <div>
-            <ul>
-                <li><a href="#main">Main Menu</a></li>
-                <li><a href="#camera">Camera Screen</a></li>
-                <li><a href="#photos">Photo Access</a></li>
-                <li><a href="#load">Loading Saved Photos</a></li>
-            </ul>
-        </div>
+        <ul>
+            <li><a href="#intro">Introduction</a>
+                <ul>
+                    <li><a href="#registration">Image Registration</a></li>
+                    <li><a href="#processing">Image Processing</a></li>
+                </ul>
+                </li>
+            <li><a href="#main">Main Menu</a></li>
+            <li><a href="#camera">Camera Screen</a></li>
+            <li><a href="#settings">Settings Screen</a></li>
+            <li><a href="#photos">Photo Access</a></li>
+            <li><a href="#load">Loading Saved Photos</a></li>
+        </ul>
+    </div>
 
-        <h1 id="main">Main Menu</h1>
-        <div>
-            <p>The main screen offers three options:</p>
-            <ol>
-                <li>Press "Start" to enter the <a href="#camera">camera</a> view.</li>
-                <li>Use the on/off switch to enable or disable "debug" mode, in which 
-                    the image processing sequence is made visible by saving each step
-                    of the processing pipeline as a separate image (currently ~30 images
-                    are saved for each photograph taken).</li>
-                <li>Click "Help" to view this webpage.</li>
-            </ol>
-        </div>
+    <h1 id="intro">Introduction</h1>
+    <div>
+        <p>UV Camera iPhone is an Augmented Reality (AR) application attempting 
+        to simulate the measurement of UV absorbance by processing and amplifying 
+        small deltas in the amount of visible blue light collected by the camera.</p>
 
-        <h1 id="camera">Camera Screen</h1>
-        <div>
-            <p>By default, the camera screen will show a live video "preview" using the NFOV
-            VIS camera.</p>
+        <p>The application is designed to operate on an iPhone XS with dual
+        rear-facing cameras.  It is assumed that the phone has been disassembled
+        and a 410nm long-pass filter (LPF) has been installed atop the lower
+        (NFOV) camera, such that this camera is obstructed from receiving light
+        above 410nm.  Both the upper (WFOV) and lower cameras will both retain
+        their factory-installed UV filter, bonded to the sensors, which will 
+        prevent either sensor from receiving UV light below approximately 380nm.</p>
 
-            <p>To take an image, click the round circle button ⚫️ at the bottom of the screen.
-            You will hear <b>two</b> clicks, as both the NFOV and WFOV take photos in turn.</p>
+        <p>The application functions by taking two photos in sequence, one from
+        the upper (unfiltered) WFOV camera, and a second one immediately after
+        from the lower (filtered) NFOV camera.  The unfiltered image will contain
+        signal from the detector's full input range (approximately 380-750nm),
+        and the filtered image will contain signal from a much narrower band,
+        approximately 380-410nm.</p>
 
-            <p>You will then see a processed UV-enhanced image thumbnail in the upper-left corner
-            of the screen.  If you wish, you can now switch to the standard iPhone "Photos" app
-            and examine that image in detail, or download it from the phone to your computer
-            using any <a href="#photos">standard protocol</a>.</p>
+        <p>The two images will be processed together with the goal of generating
+        a combined third image, containing information from both, with additional
+        "inferred" imagery composited in.  Specifically, the composited image
+        should contain a recognizable NFOV visual frame (but actually containing
+        a cropped image from the unfiltered WFOV camera), with regions tinted
+        red to suggest potential regions of UV absorbance.</p>
+    </div>
 
-            <p>You can also click the 🔁  icon to swap the "Picture-in-Picture" thumbnail with the
-            live preview, if you prefer that arrangement.</p>
-        </div>
+    <h2 id="registration">Image Registration</h2>
+    <div>
+        <p>It is worth reminding that the Field of Regard (FOR) of the ƒ/1.8 
+        WFOV camera is approximately double, in azimuth and elevation space, 
+        that of the ƒ/2.4 NFOV camera.  Therefore, the WFOV image is cropped 
+        to 50% of its original height and width, to match the same visual 
+        frame as the NFOV camera.</p>
 
-        <h1 id="photos">Photo Access</h1>
-        <div>
-            <p>To remove your saved images, use the standard "Photos" app that comes with your
-            iPhone.  This allows you to download photos to a PC using USB, send them via email,
-            or share them to Facebook, Instagram etc.</p>
-        </div>
+        <p>However, as both detectors contain the same number of pixels 
+        (9072 × 12096), and having discarded fully half of the WFOV's pixels 
+        by cropping the outer border, that means that the NFOV's image will
+        have double the pixel resolution while describing the exact same
+        visual scene, making comparative processing difficult.</p>
+        
+        <p>Therefore the NFOV image is then scaled down by 50% in resolution, 
+        while maintaining the same visual extent.  This leaves both images
+        describing roughly the same visual scene, with a common resolution
+        of (4536 × 6048).</p>
 
-        <h1 id="load">Loading Saved Photos</h1>
-        <div>
-            <p>While on the camera screen, instead of taking new photos, you can
-            also load earlier "raw" images for re-processing.  This allows developers
-            to test new processing steps and parameters against old input data to see
-            whether and how they improve the output result. This also allows new users
-            to experiment with the program and see how it processes data even when they
-            don't have a suitable UV sample at hand for live testing.</p>
+        <p>The images are not quite coaxial though, as the cameras are 
+        physically offset on the phone.  Therefore, a crude image registration
+        is achieved by shifting the upper camera "down" by Y pixels
+        (literally, cropping the top Y pixels from the top of the unfiltered
+        but post-cropped WFOV image), and then shifting the lower camera "up"
+        by Y pixels (literally, cropping the bottom Y pixels from the bottom
+        of the filtered but post-scaled NFOV image).</p>
 
-            <p>Note that you will be prompted to select TWO photos: both the unfiltered
-            WFOV image, and the filtered NFOV image, which will normally be in immediate
-            sequential order (they should have been saved at the same time, right after
-            each other, when recorded by the software).</p>
+        <p>The resulting images are then fairly aligned and boresighted,
+        although not quite perfectly registered (it would seem that the 
+        difference in FOV between the two cameras is not exactly 2x).
+        Further work on image registration is a growth opportunity for the
+        application.</p>
+    </div>
 
-            <ol>
-                <li>Press the "Load" link at the bottom of the camera view, just below
-                    the "photo" button.</li>
-                <li>You will be shown the phone's photo gallery.  Scroll to and select the
-                    UNFILTERED (WFOV) image you wish to re-process.</li>
-                <li>You will then be re-shown the same photo gallery.  Scroll to and select
-                    the FILTERED (NFOV) image you wish to re-process, which will normally be
-                    the blurry, discoloured image immediately AFTER the unfiltered image you
-                    previously chose.</li>
-                <li>The software will then re-process the loaded files and display (and save) 
-                    the re-processed image.  If "Save image components" is selected, all
-                    intermediate work artifacts involved in the processing will be saved as 
-                    well.</li>
-            </ol>
+    <h2 id="processing">Image Processing</h2>
+    <div>
+        <p>WHERE:</p>
+        <dl>
+            <dt>Suv</dt>    <dd>Shadows exclusively in the range (380, 410nm) (not appearing in Svis)</dd>
+            <dt>Svis</dt>   <dd>Shadows anywhere in VIS (410, 740nm)</dd>
+            <dt>Sf</dt>     <dd>Shadows in filtered camera (380, 410nm)</dd>
+            <dt>Sgr</dt>    <dd>Shadows in green, red region (500, 740nm)</dd>
+            <dt>Sb</dt>     <dd>Shadows in blue region (380, 500nm)</dd>
+            <dt>Sb’</dt>    <dd>Shadows in blue region, above filter (410, 500nm)</dd>
+        </dl>
+        <p>PROCEDURE:</p>
+        <ul>
+            <li>generate Sf: copy filtered orig; drop green, red channels; grayscale; invert; increase contrast (will show white for shadows in (380, 410); black for light in (380, 410))</li>
+            <li>generate Sgr: copy unfiltered orig; drop blue channel; grayscale; invert; increase contrast (white for shadows in (500, 740); black for light in (500, 740))</li>
+            <li>generate Sb: copy unfiltered orig; drop green, red channels; grayscale; invert; increase contrast (white for shadows in (380, 500); black for light in (380, 500))</li>
+            <li>compute Sb’: Sf - Sb (white for shadows in (410, 500); black for light in (410, 500))</li>
+            <li>compute Svis = Sgr + Sb’ (white for shadows in (410, 740); black for light in (410, 740))</li>
+            <li>compute Suv = Sf - Svis (white for shadows exclusively in (380, 410))</li>
+        </ul>
 
-            <table border=0>
-            <tr valign=top>
-            <td><img src="images/load.png" style="object-fit: scale-down"/></td>
-            <td><img src="images/load-select.png" style="object-fit: scale-down"/></td>
-            </tr>
-            </table>
-        </div>
+        <p>So then if we tint Suv and blend it atop the original unfiltered image, we should be highlighting regions which are especially low in UV.</p>
+    </div>
 
+    <h1 id="main">Main Menu</h1>
+    <div>
+        <p>The main screen offers three options:</p>
+        <ol>
+            <li>Press "Start" to enter the <a href="#camera">camera</a> view.</li>
+            <li>Use the on/off switch to enable or disable "debug" mode, in which 
+                the image processing sequence is made visible by saving each step
+                of the processing pipeline as a separate image (currently ~30 images
+                are saved for each photograph taken).</li>
+            <li>Click "Help" to view this webpage.</li>
+        </ol>
+    </div>
+
+    <h1 id="camera">Camera Screen</h1>
+    <div>
+        <p>By default, the camera screen will show a live video "preview" using the NFOV
+        VIS camera.</p>
+
+        <p>To take an image, click the round circle button ⚫️ at the bottom of the screen.
+        You will hear <b>two</b> clicks, as both the NFOV and WFOV take photos in turn.</p>
+
+        <p>You will then see a processed UV-enhanced image thumbnail in the upper-left corner
+        of the screen.  If you wish, you can now switch to the standard iPhone "Photos" app
+        and examine that image in detail, or download it from the phone to your computer
+        using any <a href="#photos">standard protocol</a>.</p>
+
+        <p>You can also click the 🔁  icon to swap the "Picture-in-Picture" thumbnail with the
+        live preview, if you prefer that arrangement.</p>
+    </div>
+
+    <h1 id="settings">Settings Screen</h1>
+    <div>
+        <p>There are numerous configurable settings which can be tweaked to
+        dynamically adjust the image processing applied inside the application,
+        which can be much more convenient than constantly running XCode to
+        modify the source code and re-installing.</p>
+
+        <p>The Settings screen can be accessed by tapping the "gear" ⚙️  icon
+        from the Camera screen.</p>
+
+        <p>At present, these are settings exposed to the user:</p>
+        <dl>
+            <dt>Camera Offset (Pixels)</dt>
+            <dd>The full range of pixels needing to be vertically shifted
+                to bring the cropped WFOV and scaled NFOV images into vertical
+                alignment.  I.e., if the images are 240 pixels out of registration,
+                the app will crop 120 pixels off the top of the WFOV and 120
+                off the bottom of the NFOV to register the images.</dd>
+
+            <dt>Sf Exposure Enable</dt>     <dd>When generating Sf (Shadows in Filtered), include an Exposure adjustment step</dd>
+            <dt>Sf Exposure</dt>            <dd>If Sf Exposure enabled, how much to crank up exposure on the filtered image</dd>
+            <dt>Sf Gamma Preset Enable</dt> <dd>When generating Sf, whether to apply a preset gamma correction filter</dd>
+            <dt>Sf Gamma Preset</dt>        <dd>If Sf Preset enabled, one of L1, L2, L3, L4, E1, E2, E3 (see <a href="https://developer.apple.com/documentation/accelerate/vimage/adjusting_the_brightness_and_contrast_of_an_image#3282961">examples</a>)</dd>
+            <dt>Sf Gamma Adjust Enable</dt> <dd>When generating Sf, whether to manually adjust the gamma level</dd>
+            <dt>Sf Gamma Adjust</dt>        <dd>If Sf Gamma Adjust enabled, value of gamma adjustment</dd>
+            <dt>Sf Contrast Enable</dt>     <dd>When generating Sf, whether to adjust contrast</dd>
+            <dt>Sf Contrast</dt>            <dd>If Sf Contrast enabled, how much to adjust contrast</dd>
+            <dt>Sf Posterize Enable</dt>    <dd>When generating Sf, whether to posterize</dd>
+            <dt>Sf Posterize</dt>           <dd>If Sf Posterize enabled, how much to posterize</dd>
+            <dt>Sgr Exposure</dt>           <dd>When generating Sgr (Shadows in Green/Red), how much to adjust exposure</dd>
+            <dt>Sgr Contrast</dt>           <dd>When generating Sgr, how much to adjust contrast</dd>
+            <dt>Sb Exposure</dt>            <dd>When generating Sb (Shadows in Blue), how much to adjust exposure</dd>
+            <dt>Sb Contrast</dt>            <dd>When generating Sb, how much to adjust contrast</dd>
+            <dt>Suv Preset</dt>             <dd>When generating Suv (Shadows in UV), which gamma preset to apply (see link above)</dd>
+            <dt>Final Blend Alpha</dt>      <dd>When generating the final composited image, how much transparency (alpha) to use in the blend</dd>
+        </dl>
+    </div>
+
+    <h1 id="photos">Photo Access</h1>
+    <div>
+        <p>To download your saved images to a laptop or PC, use the standard 
+        "Photos" app that comes with your iPhone.  This allows you to download 
+        photos to a PC or Mac computer using USB, forward them via email,
+        share them via AirDrop, even post them directly to Facebook or Instagram.</p>
+
+        <p>For convenience, you can quickly access the Photo app by tapping
+        the "Picture-in-Picture" thumbnail from the UV Camera application's
+        Camera screen.</p>
+    </div>
+
+    <h1 id="load">Loading Saved Photos</h1>
+    <div>
+        <p>While on the camera screen, instead of taking new photos, you can
+        also load earlier "raw" images for re-processing.  This allows developers
+        to test new processing steps and parameters against old input data to see
+        whether and how they improve the output result. This also allows new users
+        to experiment with the program and see how it processes data even when they
+        don't have a suitable UV sample at hand for live testing.</p>
+
+        <p>Note that you will be prompted to select TWO photos: both the unfiltered
+        WFOV image, and the filtered NFOV image, which will normally be in immediate
+        sequential order (they should have been saved at the same time, right after
+        each other, when recorded by the software).</p>
+
+        <ol>
+            <li>Press the "Load" link at the bottom of the camera view, just below
+                the "photo" button.</li>
+            <li>You will be shown the phone's photo gallery.  Scroll to and select the
+                UNFILTERED (WFOV) image you wish to re-process.</li>
+            <li>You will then be re-shown the same photo gallery.  Scroll to and select
+                the FILTERED (NFOV) image you wish to re-process, which will normally be
+                the blurry, discoloured image immediately AFTER the unfiltered image you
+                previously chose.</li>
+            <li>The software will then re-process the loaded files and display (and save) 
+                the re-processed image.  If "Save image components" is selected, all
+                intermediate work artifacts involved in the processing will be saved as 
+                well.</li>
+        </ol>
+
+        <table border=0>
+        <tr valign=top>
+        <td><img src="images/load.png" style="object-fit: scale-down" alt="Load screen"/></td>
+        <td><img src="images/load-select.png" style="object-fit: scale-down" alt="select image to load"/></td>
+        </tr>
+        </table>
     </div>
 </body>
 </html>

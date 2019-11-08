@@ -20,14 +20,15 @@ class SettingsViewController: UIViewController, UITableViewDelegate,  UITableVie
         return tv
     }()
 
+    // TODO: should be enums
     let settings = [
         "Camera Offset Px",
         "Sf Exposure Enable",
         "Sf Exposure",
-        "Sf Preset Enable",
-        "Sf Preset",
-        "Sf Gamma Enable",
-        "Sf Gamma",
+        "Sf Gamma Preset Enable",
+        "Sf Gamma Preset",
+        "Sf Gamma Adjust Enable",
+        "Sf Gamma Adjust",
         "Sf Contrast Enable",
         "Sf Contrast",
         "Sf Posterize Enable",
@@ -96,29 +97,29 @@ class SettingsViewController: UIViewController, UITableViewDelegate,  UITableVie
 
         let ps = state!.processingSettings
 
-        if name == "Camera Offset Px"  { tf.text = String(ps.cameraOffsetPixels) }
+        if name == "Camera Offset Px"           { tf.text = String(ps.cameraOffsetPixels) }
         
-        else if name == "Sf Exposure Enable"{ sw.isOn = ps.generateShadowsInFilteredExposureEnable }
-        else if name == "Sf Exposure"       { tf.text = String(ps.generateShadowsInFilteredExposure) }
+        else if name == "Sf Exposure Enable"    { sw.isOn = ps.generateShadowsInFilteredExposureEnable }
+        else if name == "Sf Exposure"           { tf.text = String(ps.generateShadowsInFilteredExposure) }
             
-        else if name == "Sf Preset Enable"  { sw.isOn = ps.generateShadowsInFilteredGammaPresetEnable }
-        else if name == "Sf Preset"         { tf.text = ps.generateShadowsInFilteredGammaPreset }
+        else if name == "Sf Gamma Preset Enable"{ sw.isOn = ps.generateShadowsInFilteredGammaPresetEnable }
+        else if name == "Sf Gamma Preset"       { tf.text = ps.generateShadowsInFilteredGammaPreset }
         
-        else if name == "Sf Gamma Enable"   { sw.isOn = ps.generateShadowsInFilteredGammaAdjustEnable }
-        else if name == "Sf Gamma"          { tf.text = String(ps.generateShadowsInFilteredGammaAdjustEnable) }
+        else if name == "Sf Gamma Adjust Enable"{ sw.isOn = ps.generateShadowsInFilteredGammaAdjustEnable }
+        else if name == "Sf Gamma Adjust"       { tf.text = String(ps.generateShadowsInFilteredGammaAdjustEnable) }
         
-        else if name == "Sf Contrast Enable"{ sw.isOn = ps.generateShadowsInFilteredContrastEnable }
-        else if name == "Sf Contrast"       { tf.text = String(ps.generateShadowsInFilteredContrast)}
+        else if name == "Sf Contrast Enable"    { sw.isOn = ps.generateShadowsInFilteredContrastEnable }
+        else if name == "Sf Contrast"           { tf.text = String(ps.generateShadowsInFilteredContrast)}
             
-        else if name == "Sf Posterize Enable"{sw.isOn = ps.generateShadowsInFilteredPosterizeEnable }
-        else if name == "Sf Posterize"      { tf.text = String(ps.generateShadowsInFilteredPosterize)}
+        else if name == "Sf Posterize Enable"   { sw.isOn = ps.generateShadowsInFilteredPosterizeEnable }
+        else if name == "Sf Posterize"          { tf.text = String(ps.generateShadowsInFilteredPosterize)}
         
-        else if name == "Sgr Exposure"      { tf.text = String(ps.generateShadowsInGreenRedExposure)}
-        else if name == "Sgr Contrast"      { tf.text = String(ps.generateShadowsInGreenRedContrast)}
-        else if name == "Sb Exposure"       { tf.text = String(ps.generateShadowsInBlueExposure)}
-        else if name == "Sb Contrast"       { tf.text = String(ps.generateShadowsInBlueContrast)}
-        else if name == "Suv Preset"        { tf.text = ps.generateShadowsInUVPreset}
-        else if name == "Final Blend Alpha" { tf.text = String(ps.finalBlendAlpha)}
+        else if name == "Sgr Exposure"          { tf.text = String(ps.generateShadowsInGreenRedExposure)}
+        else if name == "Sgr Contrast"          { tf.text = String(ps.generateShadowsInGreenRedContrast)}
+        else if name == "Sb Exposure"           { tf.text = String(ps.generateShadowsInBlueExposure)}
+        else if name == "Sb Contrast"           { tf.text = String(ps.generateShadowsInBlueContrast)}
+        else if name == "Suv Preset"            { tf.text = ps.generateShadowsInUVPreset}
+        else if name == "Final Blend Alpha"     { tf.text = String(ps.finalBlendAlpha)}
         
         return cell
     }
@@ -132,11 +133,11 @@ class SettingsViewController: UIViewController, UITableViewDelegate,  UITableVie
             
             let ps = state!.processingSettings
 
-                 if name == "Sf Exposure Enable"       { ps.generateShadowsInFilteredExposureEnable = value }
-            else if name == "Sf Preset Enable"         { ps.generateShadowsInFilteredGammaPresetEnable = value }
-            else if name == "Sf Gamma Enable"          { ps.generateShadowsInFilteredGammaAdjustEnable = value }
-            else if name == "Sf Contrast Enable"       { ps.generateShadowsInFilteredContrastEnable = value }
-            else if name == "Sf Posterize Enable"      { ps.generateShadowsInFilteredPosterizeEnable = value }
+                 if name == "Sf Exposure Enable"       { ps.generateShadowsInFilteredExposureEnable    = value }
+            else if name == "Sf Gamma Preset Enable"   { ps.generateShadowsInFilteredGammaPresetEnable = value }
+            else if name == "Sf Gamma Adjust Enable"   { ps.generateShadowsInFilteredGammaAdjustEnable = value }
+            else if name == "Sf Contrast Enable"       { ps.generateShadowsInFilteredContrastEnable    = value }
+            else if name == "Sf Posterize Enable"      { ps.generateShadowsInFilteredPosterizeEnable   = value }
         }
     }
     
@@ -152,8 +153,8 @@ class SettingsViewController: UIViewController, UITableViewDelegate,  UITableVie
 
                      if name == "Camera Offset Px"  { ps.cameraOffsetPixels = Int(value) ?? 240 }
                 else if name == "Sf Exposure"       { ps.generateShadowsInFilteredExposure = Double(value) ?? 5.0 }
-                else if name == "Sf Preset"         { ps.generateShadowsInFilteredGammaPreset = value }
-                else if name == "Sf Gamma"          { ps.generateShadowsInFilteredGammaAdjust = Double(value) ?? 1.5 }
+                else if name == "Sf Gamma Preset"   { ps.generateShadowsInFilteredGammaPreset = value }
+                else if name == "Sf Gamma Adjust"   { ps.generateShadowsInFilteredGammaAdjust = Double(value) ?? 1.5 }
                 else if name == "Sf Contrast"       { ps.generateShadowsInFilteredContrast = Double(value) ?? 2.0 }
                 else if name == "Sf Posterize"      { ps.generateShadowsInFilteredPosterize = Int(value) ?? 4 }
                 else if name == "Sgr Exposure"      { ps.generateShadowsInGreenRedExposure = Double(value) ?? 1.5 }
