@@ -207,7 +207,7 @@
                                                 <constraint firstAttribute="width" constant="80" id="Iyx-U2-w2s"/>
                                             </constraints>
                                             <fontDescription key="fontDescription" type="system" pointSize="14"/>
-                                            <textInputTraits key="textInputTraits"/>
+                                            <textInputTraits key="textInputTraits" keyboardType="decimalPad"/>
                                         </textField>
                                     </subviews>
                                     <constraints>
@@ -226,20 +226,20 @@
                                 </connections>
                             </tableViewCell>
                             <tableViewCell clipsSubviews="YES" contentMode="scaleToFill" preservesSuperviewLayoutMargins="YES" selectionStyle="default" indentationWidth="10" reuseIdentifier="settingsCellSwitch" id="Won-wB-HI9" userLabel="settingsCellSwitch" customClass="SettingsCellSwitch" customModule="UVCamera">
-                                <rect key="frame" x="0.0" y="71.666667938232422" width="375" height="43.333332061767578"/>
+                                <rect key="frame" x="0.0" y="71.666667938232422" width="375" height="44"/>
                                 <autoresizingMask key="autoresizingMask"/>
                                 <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" preservesSuperviewLayoutMargins="YES" insetsLayoutMarginsFromSafeArea="NO" tableViewCell="Won-wB-HI9" id="nWt-dw-hDB">
-                                    <rect key="frame" x="0.0" y="0.0" width="375" height="43.333332061767578"/>
+                                    <rect key="frame" x="0.0" y="0.0" width="375" height="44"/>
                                     <autoresizingMask key="autoresizingMask"/>
                                     <subviews>
                                         <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="Nfl-ei-25D">
-                                            <rect key="frame" x="16" y="11.333333333333334" width="42" height="20.666666666666664"/>
+                                            <rect key="frame" x="16" y="11.333333333333334" width="42" height="21.333333333333329"/>
                                             <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                             <nil key="textColor"/>
                                             <nil key="highlightedColor"/>
                                         </label>
                                         <switch opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" contentHorizontalAlignment="center" contentVerticalAlignment="center" on="YES" translatesAutoresizingMaskIntoConstraints="NO" id="77a-jU-aKF">
-                                            <rect key="frame" x="310" y="6.3333333333333321" width="51" height="30.999999999999996"/>
+                                            <rect key="frame" x="310" y="6.6666666666666679" width="51" height="31.000000000000004"/>
                                         </switch>
                                     </subviews>
                                     <constraints>

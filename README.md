@@ -48,6 +48,9 @@ be highlighting regions which are especially low in UV.
 
 - 2.x (UV Absorbance)
 
+    - 2019-11-11 2.0.13
+        - fixed persisting Picker values in State
+        - fixed Gamma value/flag mixup
     - 2019-11-11 2.0.12
         - expose Gamma Preset enums as Picker
     - 2019-11-11 2.0.11

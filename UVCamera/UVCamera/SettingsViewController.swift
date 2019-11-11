@@ -97,10 +97,11 @@ class SettingsViewController:
             lb?.text = name
             tf?.accessibilityLabel = name
             tf?.addTarget(self, action: #selector(SettingsViewController.textFieldDidChange(_:)), for: UIControl.Event.editingChanged)
+            tf?.delegate = nil
 
                  if name == "Camera Offset Px"      { tf?.text = String(ps.cameraOffsetPixels) }
             else if name == "Sf Exposure"           { tf?.text = String(ps.generateShadowsInFilteredExposure) }
-            else if name == "Sf Gamma Adjust"       { tf?.text = String(ps.generateShadowsInFilteredGammaAdjustEnable) }
+            else if name == "Sf Gamma Adjust"       { tf?.text = String(ps.generateShadowsInFilteredGammaAdjust) }
             else if name == "Sf Contrast"           { tf?.text = String(ps.generateShadowsInFilteredContrast) }
             else if name == "Sf Posterize"          { tf?.text = String(ps.generateShadowsInFilteredPosterize) }
             else if name == "Sgr Exposure"          { tf?.text = String(ps.generateShadowsInGreenRedExposure) }
@@ -153,7 +154,6 @@ class SettingsViewController:
 
                      if name == "Camera Offset Px"     { ps.cameraOffsetPixels = Int(value) ?? 240 }
                 else if name == "Sf Exposure"          { ps.generateShadowsInFilteredExposure = Double(value) ?? 5.0 }
-                else if name == "Sf Gamma Preset Enum" { ps.generateShadowsInFilteredGammaPresetEnum = value }
                 else if name == "Sf Gamma Adjust"      { ps.generateShadowsInFilteredGammaAdjust = Double(value) ?? 1.5 }
                 else if name == "Sf Contrast"          { ps.generateShadowsInFilteredContrast = Double(value) ?? 2.0 }
                 else if name == "Sf Posterize"         { ps.generateShadowsInFilteredPosterize = Int(value) ?? 4 }
@@ -161,7 +161,6 @@ class SettingsViewController:
                 else if name == "Sgr Contrast"         { ps.generateShadowsInGreenRedContrast = Double(value) ?? 1.5 }
                 else if name == "Sb Exposure"          { ps.generateShadowsInBlueExposure = Double(value) ?? 1.5 }
                 else if name == "Sb Contrast"          { ps.generateShadowsInBlueContrast = Double(value) ?? 1.5 }
-                else if name == "Suv Preset Enum"      { ps.generateShadowsInUVPresetEnum = value }
                 else if name == "Final Blend Alpha"    { ps.finalBlendAlpha = Float(value) ?? 1.0 }
             }
         }
@@ -213,9 +212,16 @@ class SettingsViewController:
             {
                 let name = tf.accessibilityLabel
                 let value = GammaHelper.supportedPresets[row]
+                
+                print("\(String(describing: name)) changed to \(value)")
+                
                 tf.text = value
                 tf.resignFirstResponder()
-                print("\(String(describing: name)) changed to \(value)")
+                let ps = state!.processingSettings
+
+                     if name == "Sf Gamma Preset Enum" { ps.generateShadowsInFilteredGammaPresetEnum = value }
+                else if name == "Suv Preset Enum"      { ps.generateShadowsInUVPresetEnum = value }
+
             }
         }
     }
