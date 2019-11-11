@@ -909,7 +909,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         if state!.processingSettings.generateShadowsInFilteredGammaPresetEnable
         {
             // darken gamma
-            tmp = tmp!.applyGammaPreset(preset: state!.processingSettings.generateShadowsInFilteredGammaPreset)
+            tmp = tmp!.applyGammaPreset(preset: state!.processingSettings.generateShadowsInFilteredGammaPresetEnum)
             if tmp == nil
             {
                 print("\(name): failed darken gamma")
@@ -1177,7 +1177,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, UII
         }
         self.save(tmp!, "\(name): diff")
         
-        tmp = tmp!.applyGammaPreset(preset: state!.processingSettings.generateShadowsInUVPreset)
+        tmp = tmp!.applyGammaPreset(preset: state!.processingSettings.generateShadowsInUVPresetEnum)
         if tmp == nil
         {
             print("\(name): failed gamma contrast")

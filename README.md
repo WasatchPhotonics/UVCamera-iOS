@@ -48,6 +48,8 @@ be highlighting regions which are especially low in UV.
 
 - 2.x (UV Absorbance)
 
+    - 2019-11-11 2.0.12
+        - expose Gamma Preset enums as Picker
     - 2019-11-11 2.0.11
         - fixed Settings switches
     - 2019-11-08 2.0.10

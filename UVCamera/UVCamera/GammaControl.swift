@@ -20,6 +20,8 @@ class GammaHelper
         "E1": ResponseCurvePreset(label: "E1", boundary: 0, linearCoefficients: [1, 0], gamma: 1),
         "E2": ResponseCurvePreset(label: "E2", boundary: 0, linearCoefficients: [1, 0], gamma: 2.2),
         "E3": ResponseCurvePreset(label: "E3", boundary: 0, linearCoefficients: [1, 0], gamma: 1 / 2.2) ]
+
+    static let supportedPresets = { var enums = Array(presets.keys); enums.sort(); return enums }() as [String]
 }
 
 // A structure that wraps piecewise gamma parameters.

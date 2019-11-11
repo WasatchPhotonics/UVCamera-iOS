@@ -29,7 +29,7 @@ class ProcessingSettings
     var generateShadowsInFilteredExposureEnable = true
     var generateShadowsInFilteredExposure : Double = 5.0
     var generateShadowsInFilteredGammaPresetEnable = true
-    var generateShadowsInFilteredGammaPreset : String = "E2"
+    var generateShadowsInFilteredGammaPresetEnum : String = "E2"
     var generateShadowsInFilteredGammaAdjustEnable = true
     var generateShadowsInFilteredGammaAdjust : Double = 1.5
     var generateShadowsInFilteredContrastEnable = true
@@ -43,7 +43,7 @@ class ProcessingSettings
     var generateShadowsInBlueExposure : Double = 5.0
     var generateShadowsInBlueContrast : Double = 1.5
     
-    var generateShadowsInUVPreset : String = "L3"
+    var generateShadowsInUVPresetEnum : String = "L3"
 
     var finalBlendAlpha : Float = 1.0
 }
